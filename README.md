@@ -6,48 +6,50 @@ back-end.
 ## Arquitetura
 
 A máquina do usuário roda apenas o **DPPrinter**, o middleware local. Ele
-escuta duas portas ao mesmo tempo e intercepta os dois tráfegos, garantindo
-retrocompatibilidade com o MyPardini:
+escuta duas portas ao mesmo tempo e intercepta os dois tráfegos:
 
-| Sistema no portal | Porta | O que o DPPrinter intercepta |
-|---|---|---|
-| **Teste Pardini (ZBP)** — padrão | fixa `9100`, não aparece na tela | quem acha que está usando o ZBP |
-| **GTI** | o usuário digita (padrão `8080`) | quem acha que está usando o GTI |
+| Sistema no portal | Porta |
+|---|---|
+| **Teste Pardini (ZBP)** — padrão | fixa `9100`, não aparece na tela |
+| **GTI** | o usuário digita (padrão `8080`) |
 
-Os dois botões usam **exatamente o mesmo código**. A única diferença é a porta:
+Os dois botões usam o mesmo código; muda só a porta.
 
-```js
-fetch('http://127.0.0.1:' + porta + '/', {
-  method: 'POST',
-  mode: 'no-cors',
-  headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-  body: payload            // ZPL ou EPL, os mesmos do sistema legado
-});
+### Dois contratos, tentados em ordem
+
+Existem duas gerações do middleware, e o portal cobre as duas:
+
+```
+A)  POST /                              <- arquitetura nova, payload cru
+B)  GET /default?type=printer
+    POST /write  { device, data }       <- build atualmente instalada
 ```
 
-O portal não valida se o programa está lá nem qual é ele. Só dispara o payload
-para a porta correspondente; quem decide o que fazer é o middleware.
+O portal tenta **A**. Se a rota não existir (404), cai para **B**. Assim o
+técnico não precisa saber qual versão está na máquina dele.
+
+Isso não é hipótese: na build instalada durante os testes,
+`POST /` responde 404 nas duas portas e quem imprime é o `/write`.
+
+### Por que não usar `mode: no-cors`
+
+Com `no-cors` a resposta é opaca: o 404 do `POST /` fica invisível e a tela
+pinta de verde sem ter impresso nada — foi exatamente o que aconteceu em
+teste. Sem ele dá para ler o status, escolher o contrato certo e só mostrar
+verde quando o envio foi aceito de verdade. O DPPrinter devolve
+`Access-Control-Allow-Origin: *`, então não há problema de CORS.
 
 ## Mensagens na tela
 
-- **Verde** — a requisição saiu: "Impressão enviada na porta 9100 em ZPL pelo
-  sistema Teste Pardini."
-- **Vermelho** — a conexão falhou (serviço parado ou porta errada).
+- **Verde** — o middleware aceitou o envio (HTTP 2xx de verdade).
+- **Vermelho** — com o motivo:
 
-### O limite do `no-cors`
-
-Com `mode: 'no-cors'` a resposta é **opaca**: dá para saber que a conexão
-aconteceu, mas não o que o servidor respondeu. Na prática:
-
-| Situação | O que a tela mostra |
+| Situação | Mensagem |
 |---|---|
-| DPPrinter recebeu e imprimiu | verde |
-| DPPrinter respondeu erro (404, 500...) | **verde também** |
-| Nada escutando na porta | vermelho |
-
-Ou seja, verde significa "a requisição chegou em alguém", não "imprimiu". Para
-distinguir os dois seria preciso tirar o `no-cors` e ler a resposta — o que
-exige o middleware devolver cabeçalho CORS.
+| Nada escutando na porta | "Não foi possível falar com o DPPrinter..." |
+| Porta responde mas não aceita nenhum dos dois contratos | "Nada foi impresso: o serviço na porta X não aceita..." |
+| Nenhuma impressora padrão configurada | "IMPRESSORA NÃO DEFINIDA — ..." |
+| O middleware recusou o trabalho | a mensagem devolvida por ele |
 
 ## Estrutura
 
