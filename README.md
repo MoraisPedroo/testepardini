@@ -15,29 +15,43 @@ escuta duas portas ao mesmo tempo e intercepta os dois tráfegos:
 
 Os dois botões usam o mesmo código; muda só a porta.
 
-### Dois contratos, tentados em ordem
+### As rotas de cada servico
 
-Existem duas gerações do middleware, e o portal cobre as duas:
+O DPPrinter roda **dois servicos Flask distintos**, um por porta, cada um com
+a sua rota. Confirmado no fonte do middleware (`dpprinter/api/`):
 
 ```
-A)  POST /                              <- arquitetura nova, payload cru
-B)  GET /default?type=printer
-    POST /write  { device, data }       <- build atualmente instalada
+ZBP  (9100)          GET  /default
+                     POST /write   { device, data }
+
+GTI  (porta proxy)   POST /gti-printer-proxy/api/printer/print   <- payload cru
+                     GET  /gti-printer-proxy/api/status
 ```
 
-O portal tenta **A**. Se a rota não existir (404), cai para **B**. Assim o
-técnico não precisa saber qual versão está na máquina dele.
+A rota do GTI **nao** e a raiz. `POST /` responde 404 nas duas portas — foi o
+que fez as primeiras versoes deste portal nao imprimirem nada.
 
-Isso não é hipótese: na build instalada durante os testes,
-`POST /` responde 404 nas duas portas e quem imprime é o `/write`.
+Para conferir se o proxy esta de pe e em que porta:
 
-### Por que não usar `mode: no-cors`
+```bash
+curl http://127.0.0.1:8080/gti-printer-proxy/api/status
+```
 
-Com `no-cors` a resposta é opaca: o 404 do `POST /` fica invisível e a tela
-pinta de verde sem ter impresso nada — foi exatamente o que aconteceu em
-teste. Sem ele dá para ler o status, escolher o contrato certo e só mostrar
-verde quando o envio foi aceito de verdade. O DPPrinter devolve
-`Access-Control-Allow-Origin: *`, então não há problema de CORS.
+Ele responde `{"browserprint":9100,"port":8080,"status":"ready"}`.
+
+### Por que `Content-Type: text/plain`
+
+Mantem a requisicao "simples" (sem preflight de CORS) e faz o Flask entregar
+o corpo cru — com `x-www-form-urlencoded` ele trataria o payload como campo
+de formulario e o ZPL/EPL chegaria deformado.
+
+### Por que nao usar `mode: no-cors`
+
+Com `no-cors` a resposta e opaca: um 404 de rota errada fica invisivel e a
+tela pinta de verde sem ter impresso nada — foi exatamente o que aconteceu em
+teste. Sem ele da para ler o status e so mostrar verde quando o middleware
+aceitou. O DPPrinter usa `flask_cors`, entao devolve
+`Access-Control-Allow-Origin: *` e nao ha problema de CORS.
 
 ## Mensagens na tela
 

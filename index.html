@@ -95,7 +95,7 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-08-27d (POST / com fallback para /write)';
+  var VERSAO = '2026-08-27e (rotas reais: /write e /gti-printer-proxy)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   /* Payloads mantidos do sistema legado. */
@@ -174,20 +174,33 @@
     return e;
   }
 
-  /* O DPPrinter escuta as duas portas e intercepta os dois trafegos:
-   *   9100           -> quem acha que esta falando com o ZBP
-   *   porta do campo -> quem acha que esta falando com o GTI
+  /* Traduz a resposta do middleware para uma mensagem de tela. Nos dois
+   * servicos, "nenhuma impressora selecionada" chega como um JSON com
+   * success:false, e o sucesso pode vir com o corpo vazio.            */
+  function conferirRetorno(texto) {
+    if (!texto) { return; }
+
+    var j = null;
+    try { j = JSON.parse(texto); } catch (e) { return; }
+
+    if (j && j.success === false) {
+      if (j.error === 'NO_PRINTER_SELECTED') {
+        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora está selecionada ' +
+                    'no DP Printer. Abra o programa e escolha a impressora.');
+      }
+      throw falha(j.message || j.error || 'O DPPrinter recusou o trabalho de impressão.');
+    }
+  }
+
+  /* O DPPrinter escuta as duas portas com DOIS servicos diferentes, cada
+   * um com a sua rota (confirmado no fonte do middleware):
    *
-   * Existem duas geracoes do middleware, com contratos diferentes:
-   *   A) POST /  com o payload cru               (arquitetura nova)
-   *   B) GET /default?type=printer + POST /write (build atual instalada)
+   *   ZBP  -> 9100         GET  /default   +  POST /write  { device, data }
+   *   GTI  -> porta proxy  POST /gti-printer-proxy/api/printer/print  (payload cru)
    *
-   * O portal tenta A e, se a rota nao existir (404), cai para B. Assim
-   * funciona nas duas sem o usuario precisar saber qual esta na maquina.
-   *
-   * Sem 'no-cors' de proposito: o middleware devolve
-   * Access-Control-Allow-Origin: *, entao da para ler o status e so
-   * pintar de verde quando o envio realmente foi aceito.              */
+   * Content-Type text/plain de proposito: mantem a requisicao "simples"
+   * (sem preflight) e faz o Flask entregar o corpo cru, sem tratar como
+   * formulario. Sem 'no-cors', para dar pra ler o status de volta.    */
   async function enviar(linguagem) {
     var qt          = quantidade();
     var eZBP        = sistema() === 'ZBP';
@@ -206,69 +219,59 @@
     mostrar('Enviando...', 'text-slate-500');
 
     try {
-      /* ---- A) POST / com o payload cru ---- */
-      var direto;
-      try {
-        direto = await fetch(base + '/', {
+      var envio;
+
+      if (eZBP) {
+        /* ---------- Browser Print ---------- */
+        var impressora = null;
+        try {
+          var consulta = await fetch(base + '/default?type=printer');
+          if (consulta.ok) { impressora = await consulta.json(); }
+        } catch (e) {
+          throw falha('Não foi possível falar com o DP Printer em 127.0.0.1:' + porta +
+                      '. Confira se ele está em execução (ícone na bandeja do Windows).');
+        }
+
+        envio = await fetch(base + '/write', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: payload
+          body: JSON.stringify({ device: impressora, data: payload })
         });
-      } catch (e) {
-        throw falha('Não foi possível falar com o DPPrinter em 127.0.0.1:' + porta +
-                    '. Confira se ele está em execução (ícone na bandeja do Windows) ' +
-                    'e se a porta está correta.');
+
+      } else {
+        /* ---------- Proxy GTI ---------- */
+        try {
+          envio = await fetch(base + '/gti-printer-proxy/api/printer/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body: payload
+          });
+        } catch (e) {
+          throw falha('Não foi possível falar com o proxy GTI em 127.0.0.1:' + porta +
+                      '. Confira se o DP Printer está em execução e se essa é a ' +
+                      'porta que aparece em PORTA PROXY.');
+        }
       }
 
-      if (direto.ok) {
-        sucesso('Impressão enviada na porta ' + porta + ' em ' + linguagem +
-                ' pelo sistema ' + nomeSistema + '.');
-        return;
+      if (envio.status === 404) {
+        throw falha('Nada foi impresso: a porta ' + porta + ' não tem o serviço do ' +
+                    nomeSistema + '. Confira a porta em PORTA PROXY, no DP Printer.');
       }
 
-      if (direto.status !== 404) {
-        throw falha('O DPPrinter na porta ' + porta + ' respondeu HTTP ' +
-                    direto.status + ' e não imprimiu.');
+      /* 409 = o proprio middleware avisando que falta impressora */
+      if (envio.status === 409) {
+        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora está selecionada ' +
+                    'no DP Printer. Abra o programa e escolha a impressora.');
       }
-
-      /* ---- B) API /default + /write ---- */
-      var consulta = await fetch(base + '/default?type=printer');
-
-      if (consulta.status === 404) {
-        throw falha('Nada foi impresso: o serviço na porta ' + porta + ' não aceita ' +
-                    'nenhuma das duas formas de envio (POST / e /write). Confirme se ' +
-                    'essa é a porta certa do ' + nomeSistema + ' no DPPrinter.');
-      }
-      if (!consulta.ok) {
-        throw falha('O DPPrinter respondeu HTTP ' + consulta.status +
-                    ' ao consultar a impressora padrão na porta ' + porta + '.');
-      }
-
-      var impressora = null;
-      try { impressora = await consulta.json(); } catch (e) { impressora = null; }
-
-      if (!impressora || !impressora.uid) {
-        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora padrão está ' +
-                    'configurada no DPPrinter. Abra o programa e selecione a impressora.');
-      }
-
-      var envio = await fetch(base + '/write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body: JSON.stringify({ device: impressora, data: payload })
-      });
 
       if (!envio.ok) {
-        throw falha('Falha ao enviar para a impressora: HTTP ' + envio.status + '.');
+        throw falha('O ' + nomeSistema + ' respondeu HTTP ' + envio.status +
+                    ' e não imprimiu.');
       }
 
-      var retorno = null;
-      try { retorno = await envio.json(); } catch (e) { retorno = null; }
-
-      if (retorno && retorno.success === false) {
-        throw falha(retorno.error || retorno.message ||
-                    'O DPPrinter recusou o trabalho de impressão.');
-      }
+      var texto = '';
+      try { texto = await envio.text(); } catch (e) { texto = ''; }
+      conferirRetorno(texto);
 
       sucesso('Impressão enviada na porta ' + porta + ' em ' + linguagem +
               ' pelo sistema ' + nomeSistema + '.');
