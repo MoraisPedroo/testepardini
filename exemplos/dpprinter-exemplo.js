@@ -1,14 +1,15 @@
 /* =============================================================================
  * DPPrinter - servidor de EXEMPLO (apenas para conferir o portal)
  * -----------------------------------------------------------------------------
- * Emula a mesma API HTTP local do DPPrinter e do Zebra Browser Print:
+ * Emula a arquitetura do middleware: escuta DUAS portas ao mesmo tempo e
+ * intercepta os dois trafegos, recebendo o payload cru em POST /.
  *
- *   GET  /default?type=printer  -> JSON com a impressora padrao
- *   POST /write                 -> { device, data }  ->  {"success": true}
+ *   9100    -> trafego de quem acha que esta usando o ZBP
+ *   8080    -> trafego de quem acha que esta usando o GTI (porta flexivel)
  *
  * Uso:
- *   node exemplos/dpprinter-exemplo.js 3000
- *   node exemplos/dpprinter-exemplo.js 3000 --sem-impressora   (testa o erro)
+ *   node exemplos/dpprinter-exemplo.js            (9100 e 8080)
+ *   node exemplos/dpprinter-exemplo.js 9100 3000  (portas personalizadas)
  *
  * O payload EPL/ZPL recebido aparece no console. Nada e impresso de verdade,
  * a menos que voce preencha IMPRESSORA_IP abaixo.
@@ -17,29 +18,12 @@
 const http = require('http');
 const net  = require('net');
 
-const PORTA          = parseInt(process.argv[2], 10) || 3000;
-const SEM_IMPRESSORA = process.argv.indexOf('--sem-impressora') !== -1;
+const PORTA_ZBP = parseInt(process.argv[2], 10) || 9100;
+const PORTA_GTI = parseInt(process.argv[3], 10) || 8080;
 
 /* Para encaminhar de verdade a uma impressora de rede, preencha o IP. */
 const IMPRESSORA_IP    = null;   // ex.: '192.168.1.55'
 const IMPRESSORA_PORTA = 9100;
-
-const DISPOSITIVO = {
-  connection:   'network',
-  deviceType:   'printer',
-  manufacturer: 'Zebra',
-  name:         '(EXEMPLO) Zebra - 127.0.0.1',
-  uid:          '(EXEMPLO) Zebra - 127.0.0.1',
-  version:      3
-};
-
-function responder(res, status, corpo, tipo) {
-  res.writeHead(status, {
-    'Content-Type': tipo || 'application/json',
-    'Access-Control-Allow-Origin': '*'
-  });
-  res.end(corpo);
-}
 
 function enviarParaImpressora(payload) {
   return new Promise((resolve, reject) => {
@@ -52,53 +36,54 @@ function enviarParaImpressora(payload) {
   });
 }
 
-const servidor = http.createServer((req, res) => {
-  const rota = req.url.split('?')[0];
+function criarServidor(porta, rotulo) {
+  const servidor = http.createServer((req, res) => {
+    /* O portal usa mode:'no-cors', entao a resposta e opaca de qualquer
+     * forma. Os cabecalhos ficam aqui so para quem quiser ler o retorno. */
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
-  /* ---- impressora padrao ---- */
-  if (req.method === 'GET' && rota === '/default') {
-    if (SEM_IMPRESSORA) {
-      console.log('GET /default -> nenhuma impressora configurada (modo --sem-impressora)');
-      return responder(res, 200, '{}');
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Use POST.');
     }
-    console.log('GET /default -> ' + DISPOSITIVO.name);
-    return responder(res, 200, JSON.stringify(DISPOSITIVO));
-  }
 
-  /* ---- envio do trabalho ---- */
-  if (req.method === 'POST' && rota === '/write') {
-    let corpo = '';
-    req.on('data', (c) => { corpo += c; });
+    let payload = '';
+    req.on('data', (c) => { payload += c; });
     req.on('end', async () => {
-      let payload = corpo;
-      let device  = null;
-
-      try {
-        const j = JSON.parse(corpo);
-        payload = j.data || '';
-        device  = j.device || null;
-      } catch (e) { /* corpo cru, segue como esta */ }
-
-      console.log('\n--- Trabalho recebido em', new Date().toLocaleString('pt-BR'), '---');
-      console.log('Impressora:', device ? device.name : '(nao informada)');
+      console.log(`\n--- [${rotulo}:${porta}] recebido em ${new Date().toLocaleString('pt-BR')} ---`);
       console.log(payload);
 
       try {
         await enviarParaImpressora(payload);
-        return responder(res, 200, JSON.stringify({ success: true }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
       } catch (e) {
-        return responder(res, 200, JSON.stringify({ success: false, error: e.message }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
       }
     });
-    return;
-  }
+  });
 
-  console.log(req.method, rota, '-> 404');
-  responder(res, 404, 'Not Found', 'text/plain');
-});
+  servidor.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+      console.error(`[${rotulo}] porta ${porta} ja esta em uso — o DPPrinter real deve estar rodando.`);
+    } else {
+      console.error(`[${rotulo}] erro:`, e.message);
+    }
+  });
 
-servidor.listen(PORTA, '127.0.0.1', () => {
-  console.log(`DPPrinter (exemplo) ouvindo em http://127.0.0.1:${PORTA}`);
-  if (SEM_IMPRESSORA) { console.log('Modo --sem-impressora: /default devolve vazio.'); }
-  console.log('Aguardando testes do portal... (Ctrl+C para parar)');
-});
+  servidor.listen(porta, '127.0.0.1', () => {
+    console.log(`[${rotulo}] ouvindo em http://127.0.0.1:${porta}`);
+  });
+
+  return servidor;
+}
+
+criarServidor(PORTA_ZBP, 'ZBP');
+criarServidor(PORTA_GTI, 'GTI');
+console.log('Aguardando testes do portal... (Ctrl+C para parar)');

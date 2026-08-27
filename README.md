@@ -1,54 +1,53 @@
 # Teste de Impressão - Hermes Pardini
 
 Portal estático de teste de impressão térmica. Um único `index.html`, sem
-back-end: o navegador conversa direto com o proxy que roda na máquina do
-usuário.
+back-end.
 
-## Como funciona
+## Arquitetura
 
-| Sistema | Porta |
-|---|---|
-| **Teste Pardini (ZBP)** — opção padrão | fixa em `9100`, não aparece na tela |
-| **GTI** | o usuário digita a porta (padrão `9100`) |
+A máquina do usuário roda apenas o **DPPrinter**, o middleware local. Ele
+escuta duas portas ao mesmo tempo e intercepta os dois tráfegos, garantindo
+retrocompatibilidade com o MyPardini:
 
-O DPPrinter e o Zebra Browser Print expõem a **mesma API HTTP local**, e é ela
-que o portal usa:
+| Sistema no portal | Porta | O que o DPPrinter intercepta |
+|---|---|---|
+| **Teste Pardini (ZBP)** — padrão | fixa `9100`, não aparece na tela | quem acha que está usando o ZBP |
+| **GTI** | o usuário digita (padrão `8080`) | quem acha que está usando o GTI |
 
+Os dois botões usam **exatamente o mesmo código**. A única diferença é a porta:
+
+```js
+fetch('http://127.0.0.1:' + porta + '/', {
+  method: 'POST',
+  mode: 'no-cors',
+  headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+  body: payload            // ZPL ou EPL, os mesmos do sistema legado
+});
 ```
-GET  http://127.0.0.1:{porta}/default?type=printer   -> dados da impressora padrão
-POST http://127.0.0.1:{porta}/write                  -> { device, data }
-```
 
-O `POST /write` responde `{"success": true}`. As requisições usam
-`Content-Type: text/plain` de propósito: isso as mantém como requisições
-"simples", sem preflight de CORS.
-
-> **Não use `mode: 'no-cors'` aqui.** Ele deixa a resposta opaca, o que impede
-> ler o status e a mensagem de erro — e foi o que escondeu um 404 de rota
-> errada. O DPPrinter já devolve `Access-Control-Allow-Origin: *`, então o
-> fetch normal funciona e dá para mostrar o erro real.
-
-Uma observação sobre portas: o DPPrinter também abre a `8080`, mas ela **não**
-responde às rotas de impressão. A porta que imprime é a `9100`.
+O portal não valida se o programa está lá nem qual é ele. Só dispara o payload
+para a porta correspondente; quem decide o que fazer é o middleware.
 
 ## Mensagens na tela
 
-Verde, em caso de sucesso:
+- **Verde** — a requisição saiu: "Impressão enviada na porta 9100 em ZPL pelo
+  sistema Teste Pardini."
+- **Vermelho** — a conexão falhou (serviço parado ou porta errada).
 
-> Impressão enviada na porta 9100 em ZPL pelo sistema Teste Pardini.
+### O limite do `no-cors`
 
-Vermelho, com o motivo, nos casos de erro:
+Com `mode: 'no-cors'` a resposta é **opaca**: dá para saber que a conexão
+aconteceu, mas não o que o servidor respondeu. Na prática:
 
-| Situação | Mensagem |
+| Situação | O que a tela mostra |
 |---|---|
-| Proxy parado, não instalado ou porta errada | "O {sistema} não respondeu em 127.0.0.1:{porta}..." |
-| Serviço responde mas não tem a rota | "...respondeu, mas não reconhece a rota /default..." |
-| Nenhuma impressora padrão configurada | "IMPRESSORA NÃO DEFINIDA — ..." |
-| O proxy recusou o trabalho | a mensagem devolvida pelo próprio proxy |
+| DPPrinter recebeu e imprimiu | verde |
+| DPPrinter respondeu erro (404, 500...) | **verde também** |
+| Nada escutando na porta | vermelho |
 
-Um detalhe: se um proxy responder **sem** cabeçalho CORS, o navegador bloqueia
-a leitura e o erro fica indistinguível de "serviço parado". Por isso essa
-mensagem cita as duas causas.
+Ou seja, verde significa "a requisição chegou em alguém", não "imprimiu". Para
+distinguir os dois seria preciso tirar o `no-cors` e ler a resposta — o que
+exige o middleware devolver cabeçalho CORS.
 
 ## Estrutura
 
@@ -58,7 +57,7 @@ logopardini.png                Logo do topo e favicon
 downloads/                     Instaladores .exe — veja downloads/LEIA-ME.txt
 vercel.json                    Cabeçalhos, cleanUrls e cache do HTML
 .vercelignore                  Garante que os .exe subam no deploy pela CLI
-exemplos/dpprinter-exemplo.js  Emulador local do DPPrinter, para testes
+exemplos/dpprinter-exemplo.js  Emulador local de duas portas, para testes
 ```
 
 ## Deploy na Vercel
@@ -69,8 +68,8 @@ Framework Preset **Other**, sem build command e sem output directory — o
 ### Os instaladores e o limite do GitHub
 
 O `GTI Printer Proxy 3 Pardini.exe` tem ~130 MB, acima do limite de 100 MB por
-arquivo do GitHub: ele não entra no repositório de jeito nenhum. Por isso os
-`.exe` ficam fora do Git (`.gitignore`).
+arquivo do GitHub: ele não entra no repositório. Por isso os `.exe` ficam fora
+do Git (`.gitignore`).
 
 Para os três botões de download funcionarem, publique **pela CLI**, direto da
 pasta local — assim os instaladores sobem como arquivos estáticos sem passar
@@ -93,15 +92,13 @@ segura a página antiga e você acaba testando código velho. Para conferir qual
 versão está carregada, abra o Console: a página escreve
 `Teste de Impressao - versao ...` ao carregar.
 
-## Testando sem impressora
+## Testando sem o DPPrinter
+
+O emulador sobe as duas portas e imprime no console o que receber:
 
 ```bash
-node exemplos/dpprinter-exemplo.js 3000
+node exemplos/dpprinter-exemplo.js 3000 3001
 ```
 
-Selecione GTI, porta 3000, e envie: o payload aparece no console. Para testar a
-mensagem de erro de impressora ausente:
-
-```bash
-node exemplos/dpprinter-exemplo.js 3001 --sem-impressora
-```
+Selecione GTI, aponte para 3000 ou 3001 e envie. Para encaminhar de verdade a
+uma impressora de rede, defina `IMPRESSORA_IP` no topo do arquivo.

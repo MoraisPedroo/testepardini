@@ -95,7 +95,7 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-08-27b (guarda de servico ZBP x GTI)';
+  var VERSAO = '2026-08-27c (POST direto no DPPrinter)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   /* Payloads mantidos do sistema legado. */
@@ -167,24 +167,19 @@
     Array.prototype.forEach.call(botoes, function (b) { b.disabled = estado; });
   }
 
-  /* Erro com mensagem ja pronta para o usuario final. */
-  function falha(msg) {
-    var e = new Error(msg);
-    e.tratado = true;
-    return e;
-  }
-
-  /* O DPPrinter (e o Browser Print) expoem a mesma API HTTP local:
-   *   GET  /default?type=printer  -> dados da impressora padrao
-   *   POST /write                 -> { device, data }
-   * Usamos Content-Type text/plain de proposito: mantem a requisicao
-   * "simples" e evita o preflight de CORS.                            */
+  /* O DPPrinter escuta as duas portas e intercepta os dois trafegos:
+   *   9100          -> quem acha que esta falando com o ZBP
+   *   porta do campo -> quem acha que esta falando com o GTI
+   * O portal so dispara o payload; quem decide o que fazer e o middleware.
+   *
+   * mode 'no-cors' manda a requisicao sem o navegador barrar por CORS. A
+   * resposta vem opaca, entao um 404 do outro lado nao aparece aqui — so
+   * a falha de conexao (servico parado ou porta errada) e detectavel.  */
   async function enviar(linguagem) {
     var qt          = quantidade();
     var eZBP        = sistema() === 'ZBP';
     var porta       = eZBP ? PORTA_ZBP : parseInt(inpPorta.value, 10);
     var nomeSistema = eZBP ? 'Teste Pardini' : 'GTI';
-    var base        = 'http://127.0.0.1:' + porta;
 
     if (!porta || porta < 1 || porta > 65535) {
       erro('Porta inválida. Informe um número entre 1 e 65535.');
@@ -193,85 +188,22 @@
     }
 
     travar(true);
-    mostrar('Enviando...', 'text-slate-500');
 
     try {
-      /* 1) Descobre a impressora padrao */
-      var resposta;
-      try {
-        resposta = await fetch(base + '/default?type=printer');
-      } catch (e) {
-        throw falha('O ' + nomeSistema + ' não respondeu em 127.0.0.1:' + porta +
-                    '. Confira se o programa está instalado e em execução (ícone na bandeja ' +
-                    'do Windows) e se a porta está correta. Se não estiver instalado, ' +
-                    'baixe pelos botões abaixo.');
-      }
-
-      if (resposta.status === 404) {
-        /* Nenhuma rota /default: nao e o servico do ZBP/Browser Print. */
-        if (eZBP) {
-          throw falha('O serviço na porta ' + porta + ' respondeu, mas não reconhece a rota /default. ' +
-                      'Confirme se o Browser Print / DPPrinter está instalado e atualizado.');
-        }
-        throw falha('A porta ' + porta + ' respondeu, mas não é o serviço do ZBP — ' +
-                    'provavelmente é mesmo o proxy GTI. O envio pelo GTI ainda não está ' +
-                    'implementado neste portal: o WebClientPrint busca o trabalho no servidor, ' +
-                    'ele não recebe envio direto do navegador.');
-      }
-      if (!resposta.ok) {
-        throw falha('O ' + nomeSistema + ' respondeu HTTP ' + resposta.status + ' ao consultar a impressora padrão.');
-      }
-
-      var impressora = null;
-      try { impressora = await resposta.json(); } catch (e) { impressora = null; }
-
-      /* Guarda de identidade: quem responde /default com um device e o
-       * ZBP/Browser Print. Se o usuario pediu GTI, a porta esta errada e
-       * NAO se deve imprimir — seriam servicos diferentes.            */
-      if (!eZBP && impressora && impressora.uid) {
-        throw falha('Nada foi impresso: a porta ' + porta + ' é do serviço ZBP (Browser Print), ' +
-                    'não do proxy GTI. Informe a porta do proxy GTI — no DPPrinter ela aparece ' +
-                    'em PORTA PROXY — ou selecione "Teste Pardini (ZBP)" para testar essa porta.');
-      }
-
-      if (!impressora || !impressora.uid) {
-        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora padrão está configurada no ' +
-                    nomeSistema + '. Abra o programa e selecione a impressora.');
-      }
-
-      /* 2) Envia o trabalho */
-      var envio;
-      try {
-        envio = await fetch(base + '/write', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: JSON.stringify({ device: impressora, data: PAYLOADS[linguagem](qt) })
-        });
-      } catch (e) {
-        throw falha('A conexão com o ' + nomeSistema + ' caiu durante o envio para 127.0.0.1:' + porta + '.');
-      }
-
-      if (envio.status === 404) {
-        throw falha('O serviço na porta ' + porta + ' não reconhece a rota /write. ' +
-                    'A versão instalada do ' + nomeSistema + ' parece incompatível.');
-      }
-      if (!envio.ok) {
-        throw falha('Falha ao enviar para a impressora: HTTP ' + envio.status + '.');
-      }
-
-      var retorno = null;
-      try { retorno = await envio.json(); } catch (e) { retorno = null; }
-
-      if (retorno && retorno.success === false) {
-        throw falha(retorno.error || retorno.message ||
-                    'O ' + nomeSistema + ' recusou o trabalho de impressão.');
-      }
+      await fetch('http://127.0.0.1:' + porta + '/', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: PAYLOADS[linguagem](qt)
+      });
 
       sucesso('Impressão enviada na porta ' + porta + ' em ' + linguagem +
               ' pelo sistema ' + nomeSistema + '.');
 
     } catch (e) {
-      erro(e.tratado ? e.message : 'Erro inesperado: ' + e.message);
+      erro('Não foi possível falar com o DPPrinter em 127.0.0.1:' + porta +
+           '. Confira se ele está em execução (ícone na bandeja do Windows) ' +
+           'e se a porta está correta.');
     } finally {
       travar(false);
     }
