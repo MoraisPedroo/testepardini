@@ -1,8 +1,4 @@
-spool/*.txt
 downloads/*.exe
 downloads/*.msi
 downloads/*.zip
-public/downloads/*.exe
-public/downloads/*.msi
-public/downloads/*.zip
 .vercel

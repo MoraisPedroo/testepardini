@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste de Impressão - Hermes Pardini</title>
+<link rel="icon" type="image/png" href="logopardini.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Esconde a setinha padrao do <summary> do accordion */
+  summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body class="min-h-screen bg-slate-100 px-4 py-10 font-sans text-slate-800 antialiased">
+
+  <main class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+
+    <!-- Logo e titulo -->
+    <header class="mb-8 text-center">
+      <img src="logopardini.png" alt="Hermes Pardini" class="mx-auto mb-4 h-16 w-16 rounded-xl">
+      <h1 class="text-lg font-semibold text-slate-900">Teste de Impressão - Hermes Pardini</h1>
+    </header>
+
+    <!-- Formulario -->
+    <form id="form" novalidate>
+
+      <label for="qt" class="block text-sm font-medium text-slate-700">Quantidade de etiquetas</label>
+      <input id="qt" type="number" min="1" max="99" value="1"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
+
+      <fieldset class="mt-5">
+        <legend class="text-sm font-medium text-slate-700">Sistema</legend>
+
+        <label class="mt-2 flex cursor-pointer items-center gap-2">
+          <input type="radio" name="sistema" value="ZBP" class="h-4 w-4 accent-green-600" checked>
+          <span class="text-sm text-slate-700">Teste Pardini (ZBP)</span>
+        </label>
+
+        <label class="mt-2 flex cursor-pointer items-center gap-2">
+          <input type="radio" name="sistema" value="GTI" class="h-4 w-4 accent-green-600">
+          <span class="text-sm text-slate-700">GTI</span>
+        </label>
+      </fieldset>
+
+      <!-- Porta: so aparece no GTI. No ZBP fica cravada em 9100 nos bastidores. -->
+      <div id="campoPorta" class="mt-4 hidden">
+        <label for="porta" class="block text-sm font-medium text-slate-700">Porta</label>
+        <input id="porta" type="number" min="1" max="65535" value="9100"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
+      </div>
+
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <button type="button" data-linguagem="ZPL"
+                class="rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+          Enviar ZPL
+        </button>
+        <button type="button" data-linguagem="EPL"
+                class="rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+          Enviar EPL
+        </button>
+      </div>
+
+      <p id="mensagem" class="mt-4 hidden text-center text-sm text-slate-500" role="status" aria-live="polite"></p>
+    </form>
+
+    <!-- Downloads -->
+    <div class="mt-8 border-t border-slate-200 pt-6">
+      <a href="downloads/DPPrinterSetup.exe" download
+         class="block rounded-lg bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800">
+        Download DPPrinter
+      </a>
+
+      <details class="mt-4 text-center">
+        <summary class="cursor-pointer list-none text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700">
+          Baixar proxys antigos
+        </summary>
+        <div class="mt-3 grid gap-2">
+          <a href="downloads/ZebraBrowserPrintSetup.exe" download
+             class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            Download Browser Print
+          </a>
+          <a href="downloads/WebClientPrintSetup.exe" download
+             class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            Download WCPP
+          </a>
+        </div>
+      </details>
+    </div>
+
+  </main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Payloads mantidos do codigo legado. */
+  var PAYLOADS = {
+    EPL: function (qt) {
+      return 'N\n' +
+             'R30,10\n' +
+             'D8\n' +
+             'A210,0,0,1,1,1,N,"TESTE TH"\n' +
+             'B285,65,0,2,2,4,70,N,"200558309501"\n' +
+             'P' + qt + '\n' +
+             'N\n';
+    },
+    ZPL: function (qt) {
+      return '^XA^MMT^PW400^LL240^LS0' +
+             '^FT38,221^A0N,40,41^FH\\^CI28^FDTeste de Impressão^FS^CI27' +
+             '^PQ' + qt + ',0,1,Y^XZ';
+    }
+  };
+
+  var PORTA_ZBP = 9100;   // cravada para o Teste Pardini
+
+  var campoPorta = document.getElementById('campoPorta');
+  var inpPorta   = document.getElementById('porta');
+  var inpQt      = document.getElementById('qt');
+  var mensagem   = document.getElementById('mensagem');
+  var radios     = document.querySelectorAll('input[name="sistema"]');
+
+  function sistema() {
+    var marcado = document.querySelector('input[name="sistema"]:checked');
+    return marcado ? marcado.value : 'ZBP';
+  }
+
+  /* O campo de porta so existe na tela quando o sistema e o GTI. */
+  function atualizarPorta() {
+    campoPorta.classList.toggle('hidden', sistema() !== 'GTI');
+  }
+
+  function quantidade() {
+    var q = parseInt(inpQt.value, 10);
+    if (isNaN(q) || q < 1) { q = 1; }
+    if (q > 99) { q = 99; }
+    inpQt.value = String(q);
+    return q;
+  }
+
+  function enviar(linguagem) {
+    var qt    = quantidade();
+    var eZBP  = sistema() === 'ZBP';
+    var porta = eZBP ? PORTA_ZBP : parseInt(inpPorta.value, 10);
+
+    if (!porta || porta < 1 || porta > 65535) {
+      mensagem.textContent = 'Informe uma porta válida.';
+      mensagem.classList.remove('hidden');
+      inpPorta.focus();
+      return;
+    }
+
+    /* Envio "cego": no-cors dispara a requisicao sem o navegador bloquear por
+     * CORS. A resposta e opaca, entao nao ha o que ler de volta.            */
+    fetch('http://127.0.0.1:' + porta + '/', {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: PAYLOADS[linguagem](qt)
+    }).catch(function () { /* silencioso por design */ });
+
+    mensagem.textContent = 'Impressão enviada na porta ' + porta +
+                           ' em ' + linguagem +
+                           ' pelo sistema ' + (eZBP ? 'Teste Pardini' : 'GTI') + '.';
+    mensagem.classList.remove('hidden');
+  }
+
+  Array.prototype.forEach.call(radios, function (r) {
+    r.addEventListener('change', atualizarPorta);
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('button[data-linguagem]'), function (b) {
+    b.addEventListener('click', function () { enviar(b.getAttribute('data-linguagem')); });
+  });
+
+  atualizarPorta();
+})();
+</script>
+</body>
+</html>

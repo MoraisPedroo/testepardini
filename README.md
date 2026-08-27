@@ -1,123 +1,68 @@
-# Portal de Teste de Impressão
+# Teste de Impressão - Hermes Pardini
 
-Portal único para testar a comunicação com impressoras térmicas e baixar os
-instaladores necessários. Substitui o formulário PHP legado.
+Portal estático de teste de impressão térmica. Um único `index.html`, sem
+back-end: o navegador dispara o payload direto para o DPPrinter que roda na
+máquina do usuário.
 
-| Aplicação   | O que faz                                                    | Porta            |
-|-------------|--------------------------------------------------------------|------------------|
-| **ZBP**     | Zebra Browser Print (serviço local da Zebra)                  | **9100** (fixa)  |
-| **GTI**     | WebClientPrint / WCPP — o servidor gera o arquivo de spool    | editável (9100)  |
-| **DPPrinter** | Middleware Node.js local, via `POST` para `127.0.0.1`       | editável (3000)  |
+## Como funciona
 
-Linguagens: **ZPL** (padrão) e **EPL** — os payloads são os mesmos do código legado.
+| Sistema | Porta |
+|---|---|
+| **Teste Pardini (ZBP)** — opção padrão | fixa em `9100`, não aparece na tela |
+| **GTI** | o usuário digita a porta |
 
----
+Ao clicar em **Enviar ZPL** ou **Enviar EPL**, o JavaScript monta o payload
+(mantidos os mesmos do sistema legado) e faz:
+
+```js
+fetch('http://127.0.0.1:' + porta + '/', {
+  method: 'POST',
+  mode: 'no-cors',
+  headers: { 'Content-Type': 'text/plain' },
+  body: payload
+});
+```
+
+O `mode: 'no-cors'` faz o envio "cego": a requisição sai sem o navegador
+bloquear por CORS, mas a resposta é **opaca**. Ou seja, o portal não tem como
+saber se o DPPrinter recebeu, se a porta está errada ou se o serviço está
+parado — a mensagem de confirmação aparece sempre. Isso é intencional: o
+diagnóstico fica com o DPPrinter, não com a página.
 
 ## Estrutura
 
 ```
-index.php                    Portal completo (PHP + HTML/Tailwind + JS)  <- fonte de verdade
-public/index.html            Versão estática, gerada pelo build.ps1      <- é o que a Vercel publica
-build.ps1                    Regera public/ a partir do index.php
-vercel.json                  Configuração do deploy estático
-spool/                       Arquivos de spool do WCPP (precisa de escrita)
-downloads/                   Instaladores (.exe) — veja downloads/LEIA-ME.txt
-js/                          SDK do Zebra Browser Print — veja js/LEIA-ME.txt
-exemplos/dpprinter-exemplo.js  Servidor de teste do DPPrinter
+index.html                     O portal inteiro (HTML + Tailwind CDN + JS)
+logopardini.png                Logo do topo e favicon
+downloads/                     Instaladores .exe — veja downloads/LEIA-ME.txt
+vercel.json                    Cabeçalhos e cleanUrls
+exemplos/dpprinter-exemplo.js  Servidor local para conferir o que chega
 ```
 
----
+## Deploy na Vercel
 
-## 1. Vercel (o que você pediu) — atenção
+Framework Preset **Other**, sem build command e sem output directory. O
+`index.html` na raiz já é servido como a página inicial.
 
-**A Vercel não executa PHP.** Um `index.php` publicado lá é servido como texto.
-Por isso o projeto tem duas saídas a partir do mesmo código-fonte:
+Os instaladores não vão para o Git (`.gitignore`). Coloque os `.exe` em
+`downloads/` antes do deploy, ou aponte os `href` para onde eles já ficam
+hoje na rede interna.
 
-- `index.php` → servidor interno com PHP (IIS/Apache). **Os três testes funcionam.**
-- `public/index.html` → Vercel. **ZBP e DPPrinter funcionam** (rodam na máquina do
-  usuário). O **GTI depende do PHP**: informe a URL do servidor interno no campo
-  *Opções avançadas → URL do servidor PHP*, ou acesse o portal pelo próprio servidor.
+### Um detalhe do HTTPS
 
-Deploy:
-
-```bash
-vercel deploy --prod
-```
-
-O `vercel.json` já aponta `outputDirectory: public`. Não configure framework
-(preset **Other**).
-
-### Importante: HTTPS chamando 127.0.0.1
-
-A Vercel serve em HTTPS. Chamadas para `http://127.0.0.1` **não** são bloqueadas
+A Vercel serve em HTTPS. Chamadas para `http://127.0.0.1` não são bloqueadas
 como conteúdo misto (o Chrome trata `127.0.0.1` como origem confiável), mas o
-Chrome aplica o **Private Network Access**: o serviço local precisa responder o
-preflight `OPTIONS` com:
+Chrome aplica *Private Network Access*: dependendo da versão, o DPPrinter pode
+precisar responder o preflight `OPTIONS` com
+`Access-Control-Allow-Private-Network: true`. Com `no-cors` e `text/plain` não
+há preflight na maioria dos casos, mas vale testar pelo domínio publicado, e
+não só abrindo o arquivo local.
 
-```
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: POST, OPTIONS
-Access-Control-Allow-Headers: Content-Type
-Access-Control-Allow-Private-Network: true
-```
-
-O `exemplos/dpprinter-exemplo.js` já devolve exatamente esses cabeçalhos — use-o
-como referência para o middleware real. Sem isso, o teste falha com "Não foi
-possível falar com o serviço local" (o portal explica isso na própria mensagem).
-
-Se preferir evitar o assunto por completo, hospede o portal no servidor interno
-por HTTP — aí não há preflight de rede privada.
-
----
-
-## 2. Servidor interno com PHP (recomendado para o GTI)
-
-1. Copie `index.php`, `spool/`, `downloads/` e `js/` para o diretório do site.
-2. Garanta escrita em `spool/` (IIS: dar Modify ao `IIS_IUSRS`).
-3. Acesse `http://servidor/testeimpressao/`.
-
-Opcional: se o SDK `WebClientPrint.php` da Neodynamic estiver na mesma pasta, ele
-é carregado automaticamente. Sem ele o portal continua funcionando e apenas gera
-o arquivo de spool (o cliente WCPP instalado faz a leitura).
-
-A lógica legada foi mantida: sessão com `session_name(md5('seg'.IP.UserAgent))`,
-token validado a cada envio e spool em `./spool/<data-hora>.txt`. Mudanças:
-o servidor **regera** o payload a partir de linguagem + quantidade (nunca grava
-texto vindo do navegador), limita a 50 etiquetas e apaga spools com mais de 1 hora.
-
----
-
-## 3. Instaladores e SDK
-
-- Coloque os `.exe` em `downloads/` com os nomes indicados em `downloads/LEIA-ME.txt`.
-- Coloque os `.js` do Browser Print em `js/` (opcional) — veja `js/LEIA-ME.txt`.
-- Rode `build.ps1` para copiar tudo para `public/` antes do deploy.
-
----
-
-## 4. Testando sem a impressora
+## Conferindo sem impressora
 
 ```bash
-node exemplos/dpprinter-exemplo.js 3000
+node exemplos/dpprinter-exemplo.js 9100
 ```
 
-Selecione **DPPrinter**, porta **3000**, e envie. O payload aparece no console do
-servidor de exemplo. Para encaminhar de verdade a uma impressora de rede, defina
-`IMPRESSORA_IP` no topo do arquivo.
-
----
-
-## 5. Editando o portal
-
-`index.php` é a **fonte de verdade**. Depois de alterar a interface:
-
-```bash
-powershell -ExecutionPolicy Bypass -File .\build.ps1
-```
-
-Isso regera `public/index.html` e copia `downloads/` e `js/`. O script aborta se
-sobrar qualquer tag PHP na versão estática.
-
-Se alterar os payloads, altere nos **dois** lugares: a função `pp_payload()` (PHP,
-usada pelo GTI) e o objeto `PAYLOADS` (JS, usado por ZBP e DPPrinter). Ambos estão
-comentados no `index.php` indicando o espelhamento.
+Envie um teste pelo portal: o payload aparece no console. Para encaminhar de
+verdade a uma impressora de rede, defina `IMPRESSORA_IP` no topo do arquivo.

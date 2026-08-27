@@ -1,17 +1,16 @@
 PASTA DE INSTALADORES
 =====================
 
-Coloque aqui os executaveis, usando EXATAMENTE estes nomes de arquivo
-(sao os nomes referenciados pelos botoes de download do portal):
+Coloque aqui os executaveis usando EXATAMENTE estes nomes de arquivo
+(sao os nomes referenciados pelos botoes de download do index.html):
 
-  ZebraBrowserPrintSetup.exe   -> Zebra Browser Print (ZBP)
-  WebClientPrintSetup.exe      -> WebClientPrint / WCPP (GTI)
-  DPPrinterSetup.exe           -> DPPrinter (middleware Node.js)
+  DPPrinterSetup.exe           -> Download DPPrinter (botao principal)
+  ZebraBrowserPrintSetup.exe   -> Download Browser Print (proxys antigos)
+  WebClientPrintSetup.exe      -> Download WCPP (proxys antigos)
 
-Se preferir outros nomes, altere os atributos href= da secao
-"Downloads dos programas" no arquivo index.php e rode build.ps1
-para regerar a versao estatica.
+Se preferir outros nomes, altere os atributos href= da secao de downloads
+no index.html.
 
 Observacao: os instaladores nao sao versionados no Git (ver .gitignore).
-Para a versao publicada na Vercel, os arquivos precisam estar em
-public/downloads/ -- o build.ps1 faz essa copia automaticamente.
+Para que os botoes funcionem no site publicado, os arquivos precisam estar
+nesta pasta no momento do deploy.
