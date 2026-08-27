@@ -45,7 +45,7 @@
       <!-- Porta: so aparece no GTI. No ZBP fica cravada em 9100 nos bastidores. -->
       <div id="campoPorta" class="mt-4 hidden">
         <label for="porta" class="block text-sm font-medium text-slate-700">Porta</label>
-        <input id="porta" type="number" min="1" max="65535" value="9100"
+        <input id="porta" type="number" min="1" max="65535" value="8080"
                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
       </div>
 
@@ -95,7 +95,7 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-08-27 (API /default + /write)';
+  var VERSAO = '2026-08-27b (guarda de servico ZBP x GTI)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   /* Payloads mantidos do sistema legado. */
@@ -208,8 +208,15 @@
       }
 
       if (resposta.status === 404) {
-        throw falha('O serviço na porta ' + porta + ' respondeu, mas não reconhece a rota /default. ' +
-                    'Confirme se a porta é a do ' + nomeSistema + ' e se a versão está atualizada.');
+        /* Nenhuma rota /default: nao e o servico do ZBP/Browser Print. */
+        if (eZBP) {
+          throw falha('O serviço na porta ' + porta + ' respondeu, mas não reconhece a rota /default. ' +
+                      'Confirme se o Browser Print / DPPrinter está instalado e atualizado.');
+        }
+        throw falha('A porta ' + porta + ' respondeu, mas não é o serviço do ZBP — ' +
+                    'provavelmente é mesmo o proxy GTI. O envio pelo GTI ainda não está ' +
+                    'implementado neste portal: o WebClientPrint busca o trabalho no servidor, ' +
+                    'ele não recebe envio direto do navegador.');
       }
       if (!resposta.ok) {
         throw falha('O ' + nomeSistema + ' respondeu HTTP ' + resposta.status + ' ao consultar a impressora padrão.');
@@ -217,6 +224,15 @@
 
       var impressora = null;
       try { impressora = await resposta.json(); } catch (e) { impressora = null; }
+
+      /* Guarda de identidade: quem responde /default com um device e o
+       * ZBP/Browser Print. Se o usuario pediu GTI, a porta esta errada e
+       * NAO se deve imprimir — seriam servicos diferentes.            */
+      if (!eZBP && impressora && impressora.uid) {
+        throw falha('Nada foi impresso: a porta ' + porta + ' é do serviço ZBP (Browser Print), ' +
+                    'não do proxy GTI. Informe a porta do proxy GTI — no DPPrinter ela aparece ' +
+                    'em PORTA PROXY — ou selecione "Teste Pardini (ZBP)" para testar essa porta.');
+      }
 
       if (!impressora || !impressora.uid) {
         throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora padrão está configurada no ' +
