@@ -1,0 +1,8 @@
+# A Vercel usa o .gitignore quando este arquivo nao existe, e o .gitignore
+# exclui os instaladores. Este arquivo existe para NAO exclui-los: assim o
+# deploy pela CLI (vercel deploy --prod) sobe downloads/*.exe junto, mesmo
+# eles ficando fora do Git.
+.git
+node_modules
+exemplos
+README.md

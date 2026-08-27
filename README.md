@@ -9,7 +9,7 @@ usuário.
 | Sistema | Porta |
 |---|---|
 | **Teste Pardini (ZBP)** — opção padrão | fixa em `9100`, não aparece na tela |
-| **GTI** | o usuário digita a porta (o DPPrinter também escuta em `8080`) |
+| **GTI** | o usuário digita a porta (padrão `9100`) |
 
 O DPPrinter e o Zebra Browser Print expõem a **mesma API HTTP local**, e é ela
 que o portal usa:
@@ -27,6 +27,9 @@ O `POST /write` responde `{"success": true}`. As requisições usam
 > ler o status e a mensagem de erro — e foi o que escondeu um 404 de rota
 > errada. O DPPrinter já devolve `Access-Control-Allow-Origin: *`, então o
 > fetch normal funciona e dá para mostrar o erro real.
+
+Uma observação sobre portas: o DPPrinter também abre a `8080`, mas ela **não**
+responde às rotas de impressão. A porta que imprime é a `9100`.
 
 ## Mensagens na tela
 
@@ -53,7 +56,8 @@ mensagem cita as duas causas.
 index.html                     O portal inteiro (HTML + Tailwind CDN + JS)
 logopardini.png                Logo do topo e favicon
 downloads/                     Instaladores .exe — veja downloads/LEIA-ME.txt
-vercel.json                    Cabeçalhos e cleanUrls
+vercel.json                    Cabeçalhos, cleanUrls e cache do HTML
+.vercelignore                  Garante que os .exe subam no deploy pela CLI
 exemplos/dpprinter-exemplo.js  Emulador local do DPPrinter, para testes
 ```
 
@@ -62,8 +66,32 @@ exemplos/dpprinter-exemplo.js  Emulador local do DPPrinter, para testes
 Framework Preset **Other**, sem build command e sem output directory — o
 `index.html` na raiz já é a página inicial.
 
-Os instaladores não vão para o Git, e o do GTI (~130 MB) está acima do limite
-de 100 MB por arquivo do GitHub. Veja `downloads/LEIA-ME.txt`.
+### Os instaladores e o limite do GitHub
+
+O `GTI Printer Proxy 3 Pardini.exe` tem ~130 MB, acima do limite de 100 MB por
+arquivo do GitHub: ele não entra no repositório de jeito nenhum. Por isso os
+`.exe` ficam fora do Git (`.gitignore`).
+
+Para os três botões de download funcionarem, publique **pela CLI**, direto da
+pasta local — assim os instaladores sobem como arquivos estáticos sem passar
+pelo GitHub:
+
+```bash
+vercel deploy --prod
+```
+
+É para isso que existe o `.vercelignore`: sem ele a Vercel usaria o
+`.gitignore` e deixaria os `.exe` de fora.
+
+Se você publicar pelo deploy automático ligado ao GitHub, o site sobe normal,
+mas os botões de download vão dar 404 — os arquivos não estarão lá.
+
+### Cache
+
+O `vercel.json` marca o HTML como `must-revalidate`. Sem isso o navegador
+segura a página antiga e você acaba testando código velho. Para conferir qual
+versão está carregada, abra o Console: a página escreve
+`Teste de Impressao - versao ...` ao carregar.
 
 ## Testando sem impressora
 

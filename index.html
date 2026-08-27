@@ -45,7 +45,7 @@
       <!-- Porta: so aparece no GTI. No ZBP fica cravada em 9100 nos bastidores. -->
       <div id="campoPorta" class="mt-4 hidden">
         <label for="porta" class="block text-sm font-medium text-slate-700">Porta</label>
-        <input id="porta" type="number" min="1" max="65535" value="8080"
+        <input id="porta" type="number" min="1" max="65535" value="9100"
                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
       </div>
 
@@ -92,6 +92,11 @@
 <script>
 (function () {
   'use strict';
+
+  /* Marca a versao no console: serve para conferir, na maquina do usuario,
+   * se a pagina carregada e a atual ou uma copia velha em cache.        */
+  var VERSAO = '2026-08-27 (API /default + /write)';
+  console.log('Teste de Impressao - versao ' + VERSAO);
 
   /* Payloads mantidos do sistema legado. */
   var PAYLOADS = {
