@@ -1,33 +1,51 @@
 # Teste de Impressão - Hermes Pardini
 
 Portal estático de teste de impressão térmica. Um único `index.html`, sem
-back-end: o navegador dispara o payload direto para o DPPrinter que roda na
-máquina do usuário.
+back-end: o navegador conversa direto com o proxy que roda na máquina do
+usuário.
 
 ## Como funciona
 
 | Sistema | Porta |
 |---|---|
 | **Teste Pardini (ZBP)** — opção padrão | fixa em `9100`, não aparece na tela |
-| **GTI** | o usuário digita a porta |
+| **GTI** | o usuário digita a porta (o DPPrinter também escuta em `8080`) |
 
-Ao clicar em **Enviar ZPL** ou **Enviar EPL**, o JavaScript monta o payload
-(mantidos os mesmos do sistema legado) e faz:
+O DPPrinter e o Zebra Browser Print expõem a **mesma API HTTP local**, e é ela
+que o portal usa:
 
-```js
-fetch('http://127.0.0.1:' + porta + '/', {
-  method: 'POST',
-  mode: 'no-cors',
-  headers: { 'Content-Type': 'text/plain' },
-  body: payload
-});
+```
+GET  http://127.0.0.1:{porta}/default?type=printer   -> dados da impressora padrão
+POST http://127.0.0.1:{porta}/write                  -> { device, data }
 ```
 
-O `mode: 'no-cors'` faz o envio "cego": a requisição sai sem o navegador
-bloquear por CORS, mas a resposta é **opaca**. Ou seja, o portal não tem como
-saber se o DPPrinter recebeu, se a porta está errada ou se o serviço está
-parado — a mensagem de confirmação aparece sempre. Isso é intencional: o
-diagnóstico fica com o DPPrinter, não com a página.
+O `POST /write` responde `{"success": true}`. As requisições usam
+`Content-Type: text/plain` de propósito: isso as mantém como requisições
+"simples", sem preflight de CORS.
+
+> **Não use `mode: 'no-cors'` aqui.** Ele deixa a resposta opaca, o que impede
+> ler o status e a mensagem de erro — e foi o que escondeu um 404 de rota
+> errada. O DPPrinter já devolve `Access-Control-Allow-Origin: *`, então o
+> fetch normal funciona e dá para mostrar o erro real.
+
+## Mensagens na tela
+
+Verde, em caso de sucesso:
+
+> Impressão enviada na porta 9100 em ZPL pelo sistema Teste Pardini.
+
+Vermelho, com o motivo, nos casos de erro:
+
+| Situação | Mensagem |
+|---|---|
+| Proxy parado, não instalado ou porta errada | "O {sistema} não respondeu em 127.0.0.1:{porta}..." |
+| Serviço responde mas não tem a rota | "...respondeu, mas não reconhece a rota /default..." |
+| Nenhuma impressora padrão configurada | "IMPRESSORA NÃO DEFINIDA — ..." |
+| O proxy recusou o trabalho | a mensagem devolvida pelo próprio proxy |
+
+Um detalhe: se um proxy responder **sem** cabeçalho CORS, o navegador bloqueia
+a leitura e o erro fica indistinguível de "serviço parado". Por isso essa
+mensagem cita as duas causas.
 
 ## Estrutura
 
@@ -36,33 +54,26 @@ index.html                     O portal inteiro (HTML + Tailwind CDN + JS)
 logopardini.png                Logo do topo e favicon
 downloads/                     Instaladores .exe — veja downloads/LEIA-ME.txt
 vercel.json                    Cabeçalhos e cleanUrls
-exemplos/dpprinter-exemplo.js  Servidor local para conferir o que chega
+exemplos/dpprinter-exemplo.js  Emulador local do DPPrinter, para testes
 ```
 
 ## Deploy na Vercel
 
-Framework Preset **Other**, sem build command e sem output directory. O
-`index.html` na raiz já é servido como a página inicial.
+Framework Preset **Other**, sem build command e sem output directory — o
+`index.html` na raiz já é a página inicial.
 
-Os instaladores não vão para o Git (`.gitignore`). Coloque os `.exe` em
-`downloads/` antes do deploy, ou aponte os `href` para onde eles já ficam
-hoje na rede interna.
+Os instaladores não vão para o Git, e o do GTI (~130 MB) está acima do limite
+de 100 MB por arquivo do GitHub. Veja `downloads/LEIA-ME.txt`.
 
-### Um detalhe do HTTPS
-
-A Vercel serve em HTTPS. Chamadas para `http://127.0.0.1` não são bloqueadas
-como conteúdo misto (o Chrome trata `127.0.0.1` como origem confiável), mas o
-Chrome aplica *Private Network Access*: dependendo da versão, o DPPrinter pode
-precisar responder o preflight `OPTIONS` com
-`Access-Control-Allow-Private-Network: true`. Com `no-cors` e `text/plain` não
-há preflight na maioria dos casos, mas vale testar pelo domínio publicado, e
-não só abrindo o arquivo local.
-
-## Conferindo sem impressora
+## Testando sem impressora
 
 ```bash
-node exemplos/dpprinter-exemplo.js 9100
+node exemplos/dpprinter-exemplo.js 3000
 ```
 
-Envie um teste pelo portal: o payload aparece no console. Para encaminhar de
-verdade a uma impressora de rede, defina `IMPRESSORA_IP` no topo do arquivo.
+Selecione GTI, porta 3000, e envie: o payload aparece no console. Para testar a
+mensagem de erro de impressora ausente:
+
+```bash
+node exemplos/dpprinter-exemplo.js 3001 --sem-impressora
+```

@@ -1,33 +1,44 @@
 /* =============================================================================
- * DPPrinter - servidor de EXEMPLO (apenas para validar o portal)
+ * DPPrinter - servidor de EXEMPLO (apenas para conferir o portal)
  * -----------------------------------------------------------------------------
- * Nao substitui o middleware oficial: serve para conferir se o portal esta
- * enviando o payload corretamente e como referencia dos cabecalhos de CORS
- * que o middleware real precisa devolver.
+ * Emula a mesma API HTTP local do DPPrinter e do Zebra Browser Print:
  *
- * Uso:  node exemplos/dpprinter-exemplo.js 3000
+ *   GET  /default?type=printer  -> JSON com a impressora padrao
+ *   POST /write                 -> { device, data }  ->  {"success": true}
  *
- * Depois selecione "DPPrinter" no portal, porta 3000, e envie o teste.
- * O payload EPL/ZPL recebido aparece no console.
+ * Uso:
+ *   node exemplos/dpprinter-exemplo.js 3000
+ *   node exemplos/dpprinter-exemplo.js 3000 --sem-impressora   (testa o erro)
+ *
+ * O payload EPL/ZPL recebido aparece no console. Nada e impresso de verdade,
+ * a menos que voce preencha IMPRESSORA_IP abaixo.
  * ========================================================================== */
 
 const http = require('http');
 const net  = require('net');
 
-const PORTA = parseInt(process.argv[2], 10) || 3000;
+const PORTA          = parseInt(process.argv[2], 10) || 3000;
+const SEM_IMPRESSORA = process.argv.indexOf('--sem-impressora') !== -1;
 
-/* Se quiser encaminhar de verdade para a impressora de rede, preencha abaixo.
- * Deixe IMPRESSORA_IP = null para apenas exibir o payload no console.        */
-const IMPRESSORA_IP    = null;   // ex.: '10.20.30.40'
+/* Para encaminhar de verdade a uma impressora de rede, preencha o IP. */
+const IMPRESSORA_IP    = null;   // ex.: '192.168.1.55'
 const IMPRESSORA_PORTA = 9100;
 
-function cabecalhosCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  /* Exigido pelo Chrome quando o portal esta em HTTPS (Private Network Access) */
-  res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  res.setHeader('Access-Control-Max-Age', '86400');
+const DISPOSITIVO = {
+  connection:   'network',
+  deviceType:   'printer',
+  manufacturer: 'Zebra',
+  name:         '(EXEMPLO) Zebra - 127.0.0.1',
+  uid:          '(EXEMPLO) Zebra - 127.0.0.1',
+  version:      3
+};
+
+function responder(res, status, corpo, tipo) {
+  res.writeHead(status, {
+    'Content-Type': tipo || 'application/json',
+    'Access-Control-Allow-Origin': '*'
+  });
+  res.end(corpo);
 }
 
 function enviarParaImpressora(payload) {
@@ -42,49 +53,52 @@ function enviarParaImpressora(payload) {
 }
 
 const servidor = http.createServer((req, res) => {
-  cabecalhosCors(res);
+  const rota = req.url.split('?')[0];
 
-  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
-
-  if (req.method !== 'POST') {
-    res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8' });
-    return res.end('Use POST.');
+  /* ---- impressora padrao ---- */
+  if (req.method === 'GET' && rota === '/default') {
+    if (SEM_IMPRESSORA) {
+      console.log('GET /default -> nenhuma impressora configurada (modo --sem-impressora)');
+      return responder(res, 200, '{}');
+    }
+    console.log('GET /default -> ' + DISPOSITIVO.name);
+    return responder(res, 200, JSON.stringify(DISPOSITIVO));
   }
 
-  let corpo = '';
-  req.on('data', (c) => { corpo += c; });
-  req.on('end', async () => {
-    let payload = corpo;
-    let meta    = {};
+  /* ---- envio do trabalho ---- */
+  if (req.method === 'POST' && rota === '/write') {
+    let corpo = '';
+    req.on('data', (c) => { corpo += c; });
+    req.on('end', async () => {
+      let payload = corpo;
+      let device  = null;
 
-    /* O portal envia JSON por padrao e texto puro quando a opcao esta marcada */
-    if ((req.headers['content-type'] || '').includes('application/json')) {
       try {
         const j = JSON.parse(corpo);
-        payload = j.payload || '';
-        meta    = { impressora: j.printer, linguagem: j.language, copias: j.copies };
+        payload = j.data || '';
+        device  = j.device || null;
+      } catch (e) { /* corpo cru, segue como esta */ }
+
+      console.log('\n--- Trabalho recebido em', new Date().toLocaleString('pt-BR'), '---');
+      console.log('Impressora:', device ? device.name : '(nao informada)');
+      console.log(payload);
+
+      try {
+        await enviarParaImpressora(payload);
+        return responder(res, 200, JSON.stringify({ success: true }));
       } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-        return res.end('JSON invalido.');
+        return responder(res, 200, JSON.stringify({ success: false, error: e.message }));
       }
-    }
+    });
+    return;
+  }
 
-    console.log('\n--- Trabalho recebido em', new Date().toLocaleString('pt-BR'), '---');
-    console.log('Rota:', req.url, '| Meta:', meta);
-    console.log(payload);
-
-    try {
-      const destino = await enviarParaImpressora(payload);
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end(`OK (${payload.length} bytes, ${destino})`);
-    } catch (e) {
-      res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('Falha ao falar com a impressora: ' + e.message);
-    }
-  });
+  console.log(req.method, rota, '-> 404');
+  responder(res, 404, 'Not Found', 'text/plain');
 });
 
 servidor.listen(PORTA, '127.0.0.1', () => {
   console.log(`DPPrinter (exemplo) ouvindo em http://127.0.0.1:${PORTA}`);
+  if (SEM_IMPRESSORA) { console.log('Modo --sem-impressora: /default devolve vazio.'); }
   console.log('Aguardando testes do portal... (Ctrl+C para parar)');
 });

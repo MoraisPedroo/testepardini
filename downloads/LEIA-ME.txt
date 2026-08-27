@@ -1,16 +1,23 @@
 PASTA DE INSTALADORES
 =====================
 
-Coloque aqui os executaveis usando EXATAMENTE estes nomes de arquivo
-(sao os nomes referenciados pelos botoes de download do index.html):
+Nomes de arquivo esperados pelos botoes do index.html:
 
-  DPPrinterSetup.exe           -> Download DPPrinter (botao principal)
-  ZebraBrowserPrintSetup.exe   -> Download Browser Print (proxys antigos)
-  WebClientPrintSetup.exe      -> Download WCPP (proxys antigos)
+  DPPrinterSetup.exe                  -> Download DPPrinter (botao principal)
+  zebra-browser-print.exe             -> Download Browser Print
+  GTI Printer Proxy 3 Pardini.exe     -> Download WCPP
 
-Se preferir outros nomes, altere os atributos href= da secao de downloads
-no index.html.
+Se trocar algum nome, ajuste o href correspondente no index.html
+(espacos no nome viram %20 na URL).
 
-Observacao: os instaladores nao sao versionados no Git (ver .gitignore).
-Para que os botoes funcionem no site publicado, os arquivos precisam estar
-nesta pasta no momento do deploy.
+ATENCAO - LIMITE DO GITHUB
+--------------------------
+Estes .exe NAO sao versionados no Git (ver .gitignore), e o
+"GTI Printer Proxy 3 Pardini.exe" tem ~130 MB: acima do limite de
+100 MB por arquivo do GitHub, ele nao pode ser commitado nem com o
+.gitignore ajustado.
+
+Enquanto os arquivos nao estiverem hospedados em algum lugar acessivel,
+os tres botoes de download vao dar 404 no site publicado. Opcoes:
+  - hospedar os instaladores na rede interna e apontar os href para la;
+  - servir o portal inteiro pelo servidor interno, com esta pasta junto.
