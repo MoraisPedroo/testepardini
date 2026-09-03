@@ -18,7 +18,7 @@
   }
   .surgir { animation: surgir .28s ease-out; }
 
-  /* Abertura do campo de porta e do accordion */
+  /* Abertura do campo de porta e dos cartoes de download */
   @keyframes descer {
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: none; }
@@ -27,62 +27,68 @@
 
   /* A logo da Zebra vem com fundo branco: multiply funde no card */
   .funde { mix-blend-mode: multiply; }
+
+  html { scroll-behavior: smooth; }
 </style>
 </head>
-<body class="min-h-screen bg-slate-100 px-4 py-10 font-sans text-slate-800 antialiased">
+<!-- flex + my-auto centraliza o card sem cortar o topo quando o
+     accordion abre e o conteudo passa da altura da tela -->
+<body class="flex min-h-screen justify-center bg-slate-100 px-4 py-5 font-sans text-slate-800 antialiased">
 
-  <main class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+  <main class="my-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
 
     <!-- Logo e titulo -->
-    <header class="mb-7">
-      <img src="logopardini.png" alt="Hermes Pardini" class="mx-auto mb-4 h-14 w-14 rounded-xl shadow-sm">
-      <h1 class="text-lg font-semibold tracking-tight text-slate-900">Teste de Impressão</h1>
-      <p class="mt-1 text-xs text-slate-500">Hermes Pardini</p>
+    <header class="mb-5">
+      <img src="logopardini.png" alt="Hermes Pardini" class="mx-auto mb-3 h-12 w-12 rounded-xl shadow-sm">
+      <h1 class="text-base font-semibold tracking-tight text-slate-900">Teste de Impressão</h1>
+      <p class="mt-0.5 text-[11px] text-slate-500">Hermes Pardini</p>
     </header>
 
     <form id="form" novalidate>
 
       <!-- Sistema -->
       <fieldset>
-        <legend class="mb-2 w-full text-xs font-semibold uppercase tracking-wider text-slate-400">Sistema</legend>
+        <legend class="mb-1.5 w-full text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sistema</legend>
 
         <div class="grid grid-cols-2 gap-3">
           <label class="cursor-pointer">
             <input type="radio" name="sistema" value="ZBP" class="peer sr-only" checked>
-            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-4 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
-              <img src="browserprint-logo.png" alt="" class="funde mx-auto h-9 w-9 object-contain">
-              <span class="mt-2 block text-sm font-medium text-slate-800">Browser Print</span>
+            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-3 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
+              <img src="browserprint-logo.png" alt="" class="funde mx-auto h-8 w-8 object-contain">
+              <span class="mt-1.5 block text-sm font-medium text-slate-800">Browser Print</span>
             </div>
           </label>
 
           <label class="cursor-pointer">
             <input type="radio" name="sistema" value="GTI" class="peer sr-only">
-            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-4 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
-              <img src="gti-logo.png" alt="" class="mx-auto h-9 w-9 object-contain">
-              <span class="mt-2 block text-sm font-medium text-slate-800">GTI</span>
+            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-3 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
+              <img src="gti-logo.png" alt="" class="mx-auto h-8 w-8 object-contain">
+              <span class="mt-1.5 block text-sm font-medium text-slate-800">GTI</span>
             </div>
           </label>
         </div>
       </fieldset>
 
-      <!-- Quantidade -->
-      <div class="mt-5">
-        <label for="qt" class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantidade de etiquetas</label>
-        <input id="qt" type="number" min="1" max="99" value="1"
-               class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
-      </div>
+      <!-- Quantidade e porta dividem a linha quando o GTI esta escolhido -->
+      <div id="campos" class="mt-4 grid gap-3">
+        <div>
+          <label for="qt" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quantidade</label>
+          <input id="qt" type="number" min="1" max="99" value="1"
+                 class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
+        </div>
 
-      <!-- Porta: so aparece no GTI. No Browser Print fica cravada em 9100. -->
-      <div id="campoPorta" class="mt-4 hidden">
-        <label for="porta" class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Porta do proxy</label>
-        <input id="porta" type="number" min="1" max="65535" value="8080"
-               class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
+        <!-- Porta: so aparece no GTI. No Browser Print fica cravada em 9100. -->
+        <div id="campoPorta" class="hidden">
+          <label for="porta" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Porta</label>
+          <input id="porta" type="number" min="1" max="65535" value="8080"
+                 class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
+        </div>
       </div>
 
       <!-- Acoes -->
-      <div class="mt-6 grid grid-cols-2 gap-3">
+      <div class="mt-4 grid grid-cols-2 gap-3">
         <button type="button" data-linguagem="ZPL"
-                class="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
           <svg class="girador hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
@@ -91,7 +97,7 @@
         </button>
 
         <button type="button" data-linguagem="EPL"
-                class="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
           <svg class="girador hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
@@ -100,36 +106,37 @@
         </button>
       </div>
 
-      <p id="mensagem" class="mt-4 hidden text-sm leading-relaxed" role="status" aria-live="polite"></p>
+      <!-- Altura reservada: a mensagem entra sem empurrar o card -->
+      <p id="mensagem" class="mt-3 min-h-[2.25rem] text-[13px] leading-snug" role="status" aria-live="polite"></p>
     </form>
 
     <!-- Downloads -->
-    <div class="mt-8 border-t border-slate-200 pt-6">
+    <div class="mt-2 border-t border-slate-200 pt-5">
       <a href="downloads/DPPrinterSetup.exe" download
-         class="flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 active:translate-y-0 active:scale-[0.98]">
+         class="flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 active:translate-y-0 active:scale-[0.98]">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-6L12 15m0 0l4.5-4.5M12 15V3"/>
         </svg>
         Download DPPrinter
       </a>
 
-      <details id="proxys" class="mt-4">
-        <summary class="cursor-pointer list-none text-xs text-slate-400 transition hover:text-slate-600">
+      <details id="proxys" class="mt-3">
+        <summary class="cursor-pointer list-none text-[11px] text-slate-400 transition hover:text-slate-600">
           Baixar proxys antigos
         </summary>
 
-        <div id="cartoesProxy" class="mt-4 grid grid-cols-2 gap-3">
+        <div id="cartoesProxy" class="mt-3 grid grid-cols-2 gap-3">
           <a href="downloads/zebra-browser-print.exe" download
-             class="group rounded-xl border border-slate-200 bg-white px-3 py-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
-            <img src="browserprint-logo.png" alt="" class="funde mx-auto h-10 w-10 object-contain transition group-hover:scale-105">
-            <span class="mt-2.5 block text-xs font-semibold text-slate-700">Browser Print</span>
+             class="group rounded-xl border border-slate-200 bg-white px-3 py-3.5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+            <img src="browserprint-logo.png" alt="" class="funde mx-auto h-9 w-9 object-contain transition group-hover:scale-105">
+            <span class="mt-2 block text-xs font-semibold text-slate-700">Browser Print</span>
             <span class="mt-0.5 block text-[11px] text-slate-400">Zebra</span>
           </a>
 
           <a href="downloads/GTI%20Printer%20Proxy%203%20Pardini.exe" download
-             class="group rounded-xl border border-slate-200 bg-white px-3 py-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
-            <img src="gti-logo.png" alt="" class="mx-auto h-10 w-10 object-contain transition group-hover:scale-105">
-            <span class="mt-2.5 block text-xs font-semibold text-slate-700">GTI</span>
+             class="group rounded-xl border border-slate-200 bg-white px-3 py-3.5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+            <img src="gti-logo.png" alt="" class="mx-auto h-9 w-9 object-contain transition group-hover:scale-105">
+            <span class="mt-2 block text-xs font-semibold text-slate-700">GTI</span>
             <span class="mt-0.5 block text-[11px] text-slate-400">Printer Proxy</span>
           </a>
         </div>
@@ -144,7 +151,7 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-09-03 (interface nova + ZPL detalhado)';
+  var VERSAO = '2026-09-03b (card em uma tela so)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   var PAYLOADS = {
@@ -202,6 +209,8 @@
   var mensagem   = document.getElementById('mensagem');
   var radios     = document.querySelectorAll('input[name="sistema"]');
   var botoes     = document.querySelectorAll('button[data-linguagem]');
+  var campos     = document.getElementById('campos');
+  var proxys     = document.getElementById('proxys');
   var cartoes    = document.getElementById('cartoesProxy');
 
   function sistema() {
@@ -219,6 +228,9 @@
   function atualizarPorta() {
     var mostrarPorta = sistema() === 'GTI';
     campoPorta.classList.toggle('hidden', !mostrarPorta);
+    /* Com a porta a vista os dois campos dividem a linha, e o card
+     * mantem a mesma altura nos dois sistemas.                     */
+    campos.classList.toggle('grid-cols-2', mostrarPorta);
     if (mostrarPorta) { animar(campoPorta, 'descer'); }
   }
 
@@ -232,7 +244,7 @@
 
   function mostrar(texto, cor) {
     mensagem.textContent = texto;
-    mensagem.className = 'mt-4 text-sm leading-relaxed ' + cor;
+    mensagem.className = 'mt-3 min-h-[2.25rem] text-[13px] leading-snug ' + cor;
     animar(mensagem, 'surgir');
   }
 
@@ -266,10 +278,9 @@
 
     if (j && j.success === false) {
       if (j.error === 'NO_PRINTER_SELECTED') {
-        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora está selecionada ' +
-                    'no DP Printer. Abra o programa e escolha a impressora.');
+        throw falha('IMPRESSORA NÃO DEFINIDA. Selecione a impressora no DP Printer.');
       }
-      throw falha(j.message || j.error || 'O DPPrinter recusou o trabalho de impressão.');
+      throw falha(j.message || j.error || 'O DP Printer recusou o trabalho.');
     }
   }
 
@@ -287,7 +298,7 @@
     var base        = 'http://127.0.0.1:' + porta;
 
     if (!porta || porta < 1 || porta > 65535) {
-      erro('Porta inválida. Informe um número entre 1 e 65535.');
+      erro('Porta inválida. Use um número entre 1 e 65535.');
       inpPorta.focus();
       return;
     }
@@ -306,8 +317,7 @@
           var consulta = await fetch(base + '/default?type=printer');
           if (consulta.ok) { impressora = await consulta.json(); }
         } catch (e) {
-          throw falha('Não foi possível falar com o DP Printer em 127.0.0.1:' + porta +
-                      '. Confira se ele está em execução (ícone na bandeja do Windows).');
+          throw falha('O DP Printer não respondeu na porta ' + porta + '. Verifique se ele está aberto.');
         }
 
         envio = await fetch(base + '/write', {
@@ -324,20 +334,16 @@
             body: payload
           });
         } catch (e) {
-          throw falha('Não foi possível falar com o proxy GTI em 127.0.0.1:' + porta +
-                      '. Confira se o DP Printer está em execução e se essa é a ' +
-                      'porta que aparece em PORTA PROXY.');
+          throw falha('O proxy GTI não respondeu na porta ' + porta + '. Confira a PORTA PROXY no DP Printer.');
         }
       }
 
       if (envio.status === 404) {
-        throw falha('Nada foi impresso: a porta ' + porta + ' não tem o serviço do ' +
-                    nomeSistema + '. Confira a porta em PORTA PROXY, no DP Printer.');
+        throw falha('A porta ' + porta + ' não tem o serviço do ' + nomeSistema + '. Confira a PORTA PROXY no DP Printer.');
       }
 
       if (envio.status === 409) {
-        throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora está selecionada ' +
-                    'no DP Printer. Abra o programa e escolha a impressora.');
+        throw falha('IMPRESSORA NÃO DEFINIDA. Selecione a impressora no DP Printer.');
       }
 
       if (!envio.ok) {
@@ -368,8 +374,16 @@
     });
   });
 
-  document.getElementById('proxys').addEventListener('toggle', function () {
-    if (this.open) { animar(cartoes, 'descer'); }
+  /* O card cabe na tela; abrir os proxys e o unico caso em que a pagina
+   * cresce — entao rolamos ate os cartoes para eles ficarem a vista.  */
+  proxys.addEventListener('toggle', function () {
+    if (!this.open) { return; }
+    animar(cartoes, 'descer');
+    setTimeout(function () {
+      /* Ate o fim da pagina, e nao so ate os cartoes: assim a base do
+       * card aparece inteira, sem cortar a margem de baixo.        */
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    }, 60);
   });
 
   atualizarPorta();
