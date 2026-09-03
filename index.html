@@ -28,6 +28,23 @@
   /* A logo da Zebra vem com fundo branco: multiply funde no card */
   .funde { mix-blend-mode: multiply; }
 
+  /* Selecao do sistema. Regra propria porque o peer-checked do Tailwind
+     usa o combinador ~, que nao alcanca elementos aninhados no cartao. */
+  .opcao input:checked ~ .cartao {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+  }
+  .opcao input:checked ~ .cartao .bolinha {
+    border-color: #16a34a;
+    background-color: #16a34a;
+  }
+  .opcao input:checked ~ .cartao .risco { opacity: 1; transform: none; }
+  .opcao input:checked ~ .cartao .rotulo { color: #14532d; }
+  .opcao input:focus-visible ~ .cartao {
+    outline: 2px solid #16a34a;
+    outline-offset: 2px;
+  }
+
   html { scroll-behavior: smooth; }
 </style>
 </head>
@@ -51,19 +68,27 @@
         <legend class="mb-1.5 w-full text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sistema</legend>
 
         <div class="grid grid-cols-2 gap-3">
-          <label class="cursor-pointer">
-            <input type="radio" name="sistema" value="ZBP" class="peer sr-only" checked>
-            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-3 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
-              <img src="browserprint-logo.png" alt="" class="funde mx-auto h-8 w-8 object-contain">
-              <span class="mt-1.5 block text-sm font-medium text-slate-800">Browser Print</span>
+          <label class="opcao cursor-pointer">
+            <input type="radio" name="sistema" value="ZBP" class="sr-only" checked>
+            <div class="cartao flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-3.5 transition hover:border-slate-300">
+              <span class="bolinha flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-slate-300 bg-white transition">
+                <svg class="risco h-3 w-3 scale-50 text-white opacity-0 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                </svg>
+              </span>
+              <span class="rotulo text-[13px] font-medium text-slate-700 transition">Browser Print</span>
             </div>
           </label>
 
-          <label class="cursor-pointer">
-            <input type="radio" name="sistema" value="GTI" class="peer sr-only">
-            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-3 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
-              <img src="gti-logo.png" alt="" class="mx-auto h-8 w-8 object-contain">
-              <span class="mt-1.5 block text-sm font-medium text-slate-800">GTI</span>
+          <label class="opcao cursor-pointer">
+            <input type="radio" name="sistema" value="GTI" class="sr-only">
+            <div class="cartao flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-3.5 transition hover:border-slate-300">
+              <span class="bolinha flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-slate-300 bg-white transition">
+                <svg class="risco h-3 w-3 scale-50 text-white opacity-0 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                </svg>
+              </span>
+              <span class="rotulo text-[13px] font-medium text-slate-700 transition">GTI Printer Proxy</span>
             </div>
           </label>
         </div>
@@ -151,7 +176,7 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-09-03b (card em uma tela so)';
+  var VERSAO = '2026-09-03c (selecao com check, sem logos em cima)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   var PAYLOADS = {
@@ -294,7 +319,10 @@
     var qt          = quantidade();
     var eZBP        = sistema() === 'ZBP';
     var porta       = eZBP ? PORTA_ZBP : parseInt(inpPorta.value, 10);
-    var nomeSistema = eZBP ? 'Browser Print' : 'GTI';
+    var nomeSistema = eZBP ? 'Browser Print' : 'GTI Printer Proxy';
+    /* Versao curta nas mensagens de erro, para caberem nas duas linhas
+     * reservadas sem esticar o card.                                 */
+    var nomeCurto   = eZBP ? 'Browser Print' : 'GTI';
     var base        = 'http://127.0.0.1:' + porta;
 
     if (!porta || porta < 1 || porta > 65535) {
@@ -339,7 +367,7 @@
       }
 
       if (envio.status === 404) {
-        throw falha('A porta ' + porta + ' não tem o serviço do ' + nomeSistema + '. Confira a PORTA PROXY no DP Printer.');
+        throw falha('A porta ' + porta + ' não tem o serviço do ' + nomeCurto + '. Confira a PORTA PROXY no DP Printer.');
       }
 
       if (envio.status === 409) {
@@ -347,7 +375,7 @@
       }
 
       if (!envio.ok) {
-        throw falha('O ' + nomeSistema + ' respondeu HTTP ' + envio.status + ' e não imprimiu.');
+        throw falha('O ' + nomeCurto + ' respondeu HTTP ' + envio.status + ' e não imprimiu.');
       }
 
       var texto = '';
