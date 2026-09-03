@@ -10,79 +10,127 @@
 <style>
   /* Esconde a setinha padrao do <summary> do accordion */
   summary::-webkit-details-marker { display: none; }
+
+  /* Entrada suave da mensagem de retorno */
+  @keyframes surgir {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .surgir { animation: surgir .28s ease-out; }
+
+  /* Abertura do campo de porta e do accordion */
+  @keyframes descer {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .descer { animation: descer .22s ease-out; }
+
+  /* A logo da Zebra vem com fundo branco: multiply funde no card */
+  .funde { mix-blend-mode: multiply; }
 </style>
 </head>
 <body class="min-h-screen bg-slate-100 px-4 py-10 font-sans text-slate-800 antialiased">
 
-  <main class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+  <main class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
 
     <!-- Logo e titulo -->
-    <header class="mb-8 text-center">
-      <img src="logopardini.png" alt="Hermes Pardini" class="mx-auto mb-4 h-16 w-16 rounded-xl">
-      <h1 class="text-lg font-semibold text-slate-900">Teste de Impressão - Hermes Pardini</h1>
+    <header class="mb-7">
+      <img src="logopardini.png" alt="Hermes Pardini" class="mx-auto mb-4 h-14 w-14 rounded-xl shadow-sm">
+      <h1 class="text-lg font-semibold tracking-tight text-slate-900">Teste de Impressão</h1>
+      <p class="mt-1 text-xs text-slate-500">Hermes Pardini</p>
     </header>
 
-    <!-- Formulario -->
     <form id="form" novalidate>
 
-      <label for="qt" class="block text-sm font-medium text-slate-700">Quantidade de etiquetas</label>
-      <input id="qt" type="number" min="1" max="99" value="1"
-             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
+      <!-- Sistema -->
+      <fieldset>
+        <legend class="mb-2 w-full text-xs font-semibold uppercase tracking-wider text-slate-400">Sistema</legend>
 
-      <fieldset class="mt-5">
-        <legend class="text-sm font-medium text-slate-700">Sistema</legend>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="cursor-pointer">
+            <input type="radio" name="sistema" value="ZBP" class="peer sr-only" checked>
+            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-4 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
+              <img src="browserprint-logo.png" alt="" class="funde mx-auto h-9 w-9 object-contain">
+              <span class="mt-2 block text-sm font-medium text-slate-800">Browser Print</span>
+            </div>
+          </label>
 
-        <label class="mt-2 flex cursor-pointer items-center gap-2">
-          <input type="radio" name="sistema" value="ZBP" class="h-4 w-4 accent-green-600" checked>
-          <span class="text-sm text-slate-700">Teste Pardini (ZBP)</span>
-        </label>
-
-        <label class="mt-2 flex cursor-pointer items-center gap-2">
-          <input type="radio" name="sistema" value="GTI" class="h-4 w-4 accent-green-600">
-          <span class="text-sm text-slate-700">GTI</span>
-        </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="sistema" value="GTI" class="peer sr-only">
+            <div class="rounded-xl border-2 border-slate-200 bg-white px-3 py-4 transition peer-hover:border-slate-300 peer-checked:border-green-600 peer-checked:bg-green-50 peer-focus-visible:ring-2 peer-focus-visible:ring-green-500 peer-focus-visible:ring-offset-2">
+              <img src="gti-logo.png" alt="" class="mx-auto h-9 w-9 object-contain">
+              <span class="mt-2 block text-sm font-medium text-slate-800">GTI</span>
+            </div>
+          </label>
+        </div>
       </fieldset>
 
-      <!-- Porta: so aparece no GTI. No ZBP fica cravada em 9100 nos bastidores. -->
-      <div id="campoPorta" class="mt-4 hidden">
-        <label for="porta" class="block text-sm font-medium text-slate-700">Porta</label>
-        <input id="porta" type="number" min="1" max="65535" value="8080"
-               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600">
+      <!-- Quantidade -->
+      <div class="mt-5">
+        <label for="qt" class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantidade de etiquetas</label>
+        <input id="qt" type="number" min="1" max="99" value="1"
+               class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
       </div>
 
+      <!-- Porta: so aparece no GTI. No Browser Print fica cravada em 9100. -->
+      <div id="campoPorta" class="mt-4 hidden">
+        <label for="porta" class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Porta do proxy</label>
+        <input id="porta" type="number" min="1" max="65535" value="8080"
+               class="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center text-sm tabular-nums outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100">
+      </div>
+
+      <!-- Acoes -->
       <div class="mt-6 grid grid-cols-2 gap-3">
         <button type="button" data-linguagem="ZPL"
-                class="rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-60">
-          Enviar ZPL
+                class="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
+          <svg class="girador hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+          </svg>
+          <span>Enviar ZPL</span>
         </button>
+
         <button type="button" data-linguagem="EPL"
-                class="rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-60">
-          Enviar EPL
+                class="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60">
+          <svg class="girador hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+          </svg>
+          <span>Enviar EPL</span>
         </button>
       </div>
 
-      <p id="mensagem" class="mt-4 hidden text-center text-sm leading-relaxed" role="status" aria-live="polite"></p>
+      <p id="mensagem" class="mt-4 hidden text-sm leading-relaxed" role="status" aria-live="polite"></p>
     </form>
 
     <!-- Downloads -->
     <div class="mt-8 border-t border-slate-200 pt-6">
       <a href="downloads/DPPrinterSetup.exe" download
-         class="block rounded-lg bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800">
+         class="flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 active:translate-y-0 active:scale-[0.98]">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-6L12 15m0 0l4.5-4.5M12 15V3"/>
+        </svg>
         Download DPPrinter
       </a>
 
-      <details class="mt-4 text-center">
-        <summary class="cursor-pointer list-none text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700">
+      <details id="proxys" class="mt-4">
+        <summary class="cursor-pointer list-none text-xs text-slate-400 transition hover:text-slate-600">
           Baixar proxys antigos
         </summary>
-        <div class="mt-3 grid gap-2">
+
+        <div id="cartoesProxy" class="mt-4 grid grid-cols-2 gap-3">
           <a href="downloads/zebra-browser-print.exe" download
-             class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-            Download Browser Print
+             class="group rounded-xl border border-slate-200 bg-white px-3 py-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+            <img src="browserprint-logo.png" alt="" class="funde mx-auto h-10 w-10 object-contain transition group-hover:scale-105">
+            <span class="mt-2.5 block text-xs font-semibold text-slate-700">Browser Print</span>
+            <span class="mt-0.5 block text-[11px] text-slate-400">Zebra</span>
           </a>
+
           <a href="downloads/GTI%20Printer%20Proxy%203%20Pardini.exe" download
-             class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-            Download WCPP
+             class="group rounded-xl border border-slate-200 bg-white px-3 py-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+            <img src="gti-logo.png" alt="" class="mx-auto h-10 w-10 object-contain transition group-hover:scale-105">
+            <span class="mt-2.5 block text-xs font-semibold text-slate-700">GTI</span>
+            <span class="mt-0.5 block text-[11px] text-slate-400">Printer Proxy</span>
           </a>
         </div>
       </details>
@@ -96,12 +144,12 @@
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-08-27e (rotas reais: /write e /gti-printer-proxy)';
+  var VERSAO = '2026-09-03 (interface nova + ZPL detalhado)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
-  /* Payloads mantidos do sistema legado. */
   var PAYLOADS = {
-    EPL: function (qt) {
+    /* EPL mantido do sistema legado. */
+    EPL: function (op) {
       return 'N\n' +
              'R30,10\n' +
              'D8\n' +
@@ -119,17 +167,34 @@
              'A450,173,0,1,1,1,N,"(REFRIG.)"\n' +
              'A210,188,0,1,1,1,N,"HG "\n' +
              'A210,206,0,1,1,1,N,""\n' +
-             'P' + qt + '\n' +
+             'P' + op.qt + '\n' +
              'N\n';
     },
-    ZPL: function (qt) {
-      return '^XA^MMT^PW400^LL240^LS0' +
-             '^FT38,221^A0N,40,41^FH\\^CI28^FDTeste de Impressão^FS^CI27' +
-             '^PQ' + qt + ',0,1,Y^XZ';
+
+    /* ZPL: etiqueta de teste com moldura, dados do envio e codigo de
+     * barras. Mesma area do legado (400x240 dots) para nao estourar o
+     * material. ^CI28 = UTF-8, necessario para os acentos.            */
+    ZPL: function (op) {
+      return '^XA\n' +
+             '^CI28\n' +
+             '^MMT\n' +
+             '^PW400\n' +
+             '^LL240\n' +
+             '^LH0,0\n' +
+             '^FO8,8^GB384,224,3^FS\n' +
+             '^FO24,24^A0N,30,30^FDTESTE DE IMPRESSÃO^FS\n' +
+             '^FO24,60^GB352,3,3^FS\n' +
+             '^FO24,74^A0N,24,24^FDHermes Pardini^FS\n' +
+             '^FO24,102^A0N,20,20^FDSistema: ' + op.sistema + '^FS\n' +
+             '^FO24,126^A0N,20,20^FDPorta: ' + op.porta + '   Etiquetas: ' + op.qt + '^FS\n' +
+             '^BY2,3,42\n' +
+             '^FO70,152^BCN,42,Y,N,N^FD200558309501^FS\n' +
+             '^PQ' + op.qt + ',0,1,Y\n' +
+             '^XZ\n';
     }
   };
 
-  var PORTA_ZBP = 9100;   // cravada para o Teste Pardini
+  var PORTA_ZBP = 9100;   // cravada para o Browser Print
 
   var campoPorta = document.getElementById('campoPorta');
   var inpPorta   = document.getElementById('porta');
@@ -137,15 +202,24 @@
   var mensagem   = document.getElementById('mensagem');
   var radios     = document.querySelectorAll('input[name="sistema"]');
   var botoes     = document.querySelectorAll('button[data-linguagem]');
+  var cartoes    = document.getElementById('cartoesProxy');
 
   function sistema() {
     var marcado = document.querySelector('input[name="sistema"]:checked');
     return marcado ? marcado.value : 'ZBP';
   }
 
-  /* O campo de porta so existe na tela quando o sistema e o GTI. */
+  /* Reinicia a animacao removendo a classe e forcando um reflow. */
+  function animar(el, classe) {
+    el.classList.remove(classe);
+    void el.offsetWidth;
+    el.classList.add(classe);
+  }
+
   function atualizarPorta() {
-    campoPorta.classList.toggle('hidden', sistema() !== 'GTI');
+    var mostrarPorta = sistema() === 'GTI';
+    campoPorta.classList.toggle('hidden', !mostrarPorta);
+    if (mostrarPorta) { animar(campoPorta, 'descer'); }
   }
 
   function quantidade() {
@@ -158,26 +232,32 @@
 
   function mostrar(texto, cor) {
     mensagem.textContent = texto;
-    mensagem.className = 'mt-4 text-center text-sm leading-relaxed ' + cor;
+    mensagem.className = 'mt-4 text-sm leading-relaxed ' + cor;
+    animar(mensagem, 'surgir');
   }
 
-  function sucesso(texto) { mostrar(texto, 'text-green-700 font-medium'); }
+  function sucesso(texto) { mostrar(texto, 'font-medium text-green-700'); }
   function erro(texto)    { mostrar(texto, 'text-red-600'); }
 
-  function travar(estado) {
-    Array.prototype.forEach.call(botoes, function (b) { b.disabled = estado; });
+  /* Trava os dois botoes e gira o spinner apenas no que foi clicado. */
+  function travar(estado, botaoAtivo) {
+    Array.prototype.forEach.call(botoes, function (b) {
+      b.disabled = estado;
+      var girador = b.querySelector('.girador');
+      if (girador) {
+        girador.classList.toggle('hidden', !(estado && b === botaoAtivo));
+      }
+    });
   }
 
-  /* Erro com mensagem ja pronta para o usuario final. */
   function falha(msg) {
     var e = new Error(msg);
     e.tratado = true;
     return e;
   }
 
-  /* Traduz a resposta do middleware para uma mensagem de tela. Nos dois
-   * servicos, "nenhuma impressora selecionada" chega como um JSON com
-   * success:false, e o sucesso pode vir com o corpo vazio.            */
+  /* Nos dois servicos "nenhuma impressora selecionada" chega como um JSON
+   * com success:false, e o sucesso pode vir com o corpo vazio.        */
   function conferirRetorno(texto) {
     if (!texto) { return; }
 
@@ -193,22 +273,18 @@
     }
   }
 
-  /* O DPPrinter escuta as duas portas com DOIS servicos diferentes, cada
-   * um com a sua rota (confirmado no fonte do middleware):
+  /* O DPPrinter roda dois servicos, um por porta, cada um com sua rota:
+   *   Browser Print -> 9100         GET  /default  +  POST /write { device, data }
+   *   GTI           -> porta proxy  POST /gti-printer-proxy/api/printer/print
    *
-   *   ZBP  -> 9100         GET  /default   +  POST /write  { device, data }
-   *   GTI  -> porta proxy  POST /gti-printer-proxy/api/printer/print  (payload cru)
-   *
-   * Content-Type text/plain de proposito: mantem a requisicao "simples"
-   * (sem preflight) e faz o Flask entregar o corpo cru, sem tratar como
-   * formulario. Sem 'no-cors', para dar pra ler o status de volta.    */
-  async function enviar(linguagem) {
+   * Content-Type text/plain mantem a requisicao "simples" (sem preflight)
+   * e faz o Flask entregar o corpo cru, sem tratar como formulario.   */
+  async function enviar(linguagem, botaoAtivo) {
     var qt          = quantidade();
     var eZBP        = sistema() === 'ZBP';
     var porta       = eZBP ? PORTA_ZBP : parseInt(inpPorta.value, 10);
-    var nomeSistema = eZBP ? 'Teste Pardini' : 'GTI';
+    var nomeSistema = eZBP ? 'Browser Print' : 'GTI';
     var base        = 'http://127.0.0.1:' + porta;
-    var payload     = PAYLOADS[linguagem](qt);
 
     if (!porta || porta < 1 || porta > 65535) {
       erro('Porta inválida. Informe um número entre 1 e 65535.');
@@ -216,14 +292,15 @@
       return;
     }
 
-    travar(true);
+    var payload = PAYLOADS[linguagem]({ qt: qt, porta: porta, sistema: nomeSistema });
+
+    travar(true, botaoAtivo);
     mostrar('Enviando...', 'text-slate-500');
 
     try {
       var envio;
 
       if (eZBP) {
-        /* ---------- Browser Print ---------- */
         var impressora = null;
         try {
           var consulta = await fetch(base + '/default?type=printer');
@@ -240,7 +317,6 @@
         });
 
       } else {
-        /* ---------- Proxy GTI ---------- */
         try {
           envio = await fetch(base + '/gti-printer-proxy/api/printer/print', {
             method: 'POST',
@@ -259,15 +335,13 @@
                     nomeSistema + '. Confira a porta em PORTA PROXY, no DP Printer.');
       }
 
-      /* 409 = o proprio middleware avisando que falta impressora */
       if (envio.status === 409) {
         throw falha('IMPRESSORA NÃO DEFINIDA — nenhuma impressora está selecionada ' +
                     'no DP Printer. Abra o programa e escolha a impressora.');
       }
 
       if (!envio.ok) {
-        throw falha('O ' + nomeSistema + ' respondeu HTTP ' + envio.status +
-                    ' e não imprimiu.');
+        throw falha('O ' + nomeSistema + ' respondeu HTTP ' + envio.status + ' e não imprimiu.');
       }
 
       var texto = '';
@@ -280,7 +354,7 @@
     } catch (e) {
       erro(e.tratado ? e.message : 'Erro inesperado: ' + e.message);
     } finally {
-      travar(false);
+      travar(false, botaoAtivo);
     }
   }
 
@@ -289,7 +363,13 @@
   });
 
   Array.prototype.forEach.call(botoes, function (b) {
-    b.addEventListener('click', function () { enviar(b.getAttribute('data-linguagem')); });
+    b.addEventListener('click', function () {
+      enviar(b.getAttribute('data-linguagem'), b);
+    });
+  });
+
+  document.getElementById('proxys').addEventListener('toggle', function () {
+    if (this.open) { animar(cartoes, 'descer'); }
   });
 
   atualizarPorta();
