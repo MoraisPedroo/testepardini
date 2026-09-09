@@ -45,6 +45,33 @@
     outline-offset: 2px;
   }
 
+  /* Modal do DPPrinter: zera o visual padrao do <dialog> e deixa o
+     cartao interno mandar na aparencia. */
+  #modalBreve { border: 0; padding: 0; background: transparent; }
+  #modalBreve::backdrop {
+    background: rgba(15, 23, 42, .55);
+    backdrop-filter: blur(3px);
+    animation: fundoEntra .2s ease-out;
+  }
+  @keyframes fundoEntra { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes caixaEntra {
+    from { opacity: 0; transform: translateY(12px) scale(.95); }
+    to   { opacity: 1; transform: none; }
+  }
+  #modalBreve[open] .caixa { animation: caixaEntra .26s cubic-bezier(.2,.8,.2,1); }
+
+  /* Halo pulsando atras da logo */
+  @keyframes pulsar {
+    0%   { transform: scale(1);    opacity: .30; }
+    70%  { transform: scale(1.35); opacity: 0; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+  .pulso { animation: pulsar 2.4s ease-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .surgir, .descer, .pulso, #modalBreve[open] .caixa { animation: none; }
+  }
+
   html { scroll-behavior: smooth; }
 </style>
 </head>
@@ -137,13 +164,13 @@
 
     <!-- Downloads -->
     <div class="mt-2 border-t border-slate-200 pt-5">
-      <a href="downloads/DPPrinterSetup.exe" download
-         class="flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 active:translate-y-0 active:scale-[0.98]">
+      <button type="button" id="btnDPPrinter"
+              class="flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 active:translate-y-0 active:scale-[0.98]">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-6L12 15m0 0l4.5-4.5M12 15V3"/>
         </svg>
         Download DPPrinter
-      </a>
+      </button>
 
       <details id="proxys" class="mt-3">
         <summary class="cursor-pointer list-none text-[11px] text-slate-400 transition hover:text-slate-600">
@@ -151,7 +178,8 @@
         </summary>
 
         <div id="cartoesProxy" class="mt-3 grid grid-cols-2 gap-3">
-          <a href="downloads/zebra-browser-print.exe" download
+          <a href="https://www.hermespardini.com.br/repositorio/zebra/zebra-browser-print.exe"
+             rel="noopener"
              class="group rounded-xl border border-slate-200 bg-white px-3 py-3.5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
             <img src="browserprint-logo.png" alt="" class="funde mx-auto h-9 w-9 object-contain transition group-hover:scale-105">
             <span class="mt-2 block text-xs font-semibold text-slate-700">Browser Print</span>
@@ -170,13 +198,43 @@
 
   </main>
 
+  <!-- Aviso do DPPrinter. <dialog> nativo: Esc, foco preso e backdrop
+       ja vem de graca do navegador. -->
+  <dialog id="modalBreve" aria-labelledby="tituloBreve">
+    <div class="caixa w-[19.5rem] max-w-[88vw] rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl">
+
+      <div class="relative mx-auto mb-4 h-14 w-14">
+        <span class="pulso absolute inset-0 rounded-2xl bg-rose-500"></span>
+        <img src="logopardini.png" alt="Hermes Pardini" class="relative h-14 w-14 rounded-2xl shadow-sm">
+      </div>
+
+      <span class="inline-block rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+        Em breve
+      </span>
+
+      <h2 id="tituloBreve" class="mt-3 text-base font-semibold tracking-tight text-slate-900">
+        Proxy disponível em breve
+      </h2>
+
+      <p class="mt-2 text-[13px] leading-relaxed text-slate-500">
+        O DPPrinter está em fase final de homologação. Enquanto isso, use um dos
+        proxys antigos logo abaixo.
+      </p>
+
+      <button type="button" id="fecharBreve"
+              class="mt-5 w-full rounded-xl bg-gradient-to-b from-green-500 to-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-[0.97]">
+        Entendi
+      </button>
+    </div>
+  </dialog>
+
 <script>
 (function () {
   'use strict';
 
   /* Marca a versao no console: serve para conferir, na maquina do usuario,
    * se a pagina carregada e a atual ou uma copia velha em cache.        */
-  var VERSAO = '2026-09-03c (selecao com check, sem logos em cima)';
+  var VERSAO = '2026-09-09 (aviso em breve no DPPrinter)';
   console.log('Teste de Impressao - versao ' + VERSAO);
 
   var PAYLOADS = {
@@ -400,6 +458,41 @@
     b.addEventListener('click', function () {
       enviar(b.getAttribute('data-linguagem'), b);
     });
+  });
+
+  /* Aviso de "em breve" no lugar do download do DPPrinter. O Esc e a
+   * devolucao do foco ao botao ficam por conta do proprio <dialog>. */
+  var modalBreve = document.getElementById('modalBreve');
+  var btnDPPrinter = document.getElementById('btnDPPrinter');
+
+  btnDPPrinter.addEventListener('click', function () {
+    if (typeof modalBreve.showModal === 'function') {
+      modalBreve.showModal();
+    } else {
+      modalBreve.setAttribute('open', '');   // navegador sem <dialog>
+    }
+  });
+
+  function fecharModal() {
+    if (typeof modalBreve.close === 'function') {
+      modalBreve.close();
+    } else {
+      modalBreve.removeAttribute('open');
+    }
+  }
+
+  document.getElementById('fecharBreve').addEventListener('click', fecharModal);
+
+  /* Clique no backdrop: o alvo e o proprio <dialog>, nunca o cartao. */
+  modalBreve.addEventListener('click', function (ev) {
+    if (ev.target === modalBreve) { fecharModal(); }
+  });
+
+  /* O <dialog> ja fecha no Esc sozinho; este tratador cobre o caso de
+   * o navegador nao aplicar o comportamento nativo. Fechar duas vezes
+   * nao faz mal.                                                    */
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && modalBreve.open) { fecharModal(); }
   });
 
   /* O card cabe na tela; abrir os proxys e o unico caso em que a pagina

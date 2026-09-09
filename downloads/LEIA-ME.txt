@@ -1,23 +1,24 @@
 PASTA DE INSTALADORES
 =====================
 
-Nomes de arquivo esperados pelos botoes do index.html:
+Hoje so UM arquivo precisa estar aqui:
 
-  DPPrinterSetup.exe                  -> Download DPPrinter (botao principal)
-  zebra-browser-print.exe             -> Download Browser Print
-  GTI Printer Proxy 3 Pardini.exe     -> Download WCPP
+  GTI Printer Proxy 3 Pardini.exe   -> botao "GTI / Printer Proxy"
 
-Se trocar algum nome, ajuste o href correspondente no index.html
-(espacos no nome viram %20 na URL).
+Os outros dois botoes nao dependem desta pasta:
+
+  Browser Print  -> baixa direto de
+                    https://www.hermespardini.com.br/repositorio/zebra/
+                    zebra-browser-print.exe
+  DPPrinter      -> nao baixa nada ainda: abre o aviso
+                    "Proxy disponivel em breve"
+
+Se trocar o nome do arquivo do GTI, ajuste o href correspondente no
+index.html (espacos no nome viram %20 na URL).
 
 ATENCAO - LIMITE DO GITHUB
 --------------------------
-Estes .exe NAO sao versionados no Git (ver .gitignore), e o
-"GTI Printer Proxy 3 Pardini.exe" tem ~130 MB: acima do limite de
-100 MB por arquivo do GitHub, ele nao pode ser commitado nem com o
-.gitignore ajustado.
-
-Enquanto os arquivos nao estiverem hospedados em algum lugar acessivel,
-os tres botoes de download vao dar 404 no site publicado. Opcoes:
-  - hospedar os instaladores na rede interna e apontar os href para la;
-  - servir o portal inteiro pelo servidor interno, com esta pasta junto.
+O "GTI Printer Proxy 3 Pardini.exe" tem ~130 MB, acima do limite de
+100 MB por arquivo do GitHub: ele nao pode ser commitado. Para o botao
+funcionar no site publicado, use "vercel deploy --prod" a partir desta
+pasta, que sobe o arquivo direto sem passar pelo GitHub.

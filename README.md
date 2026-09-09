@@ -81,25 +81,37 @@ exemplos/dpprinter-exemplo.js  Emulador local de duas portas, para testes
 Framework Preset **Other**, sem build command e sem output directory — o
 `index.html` na raiz já é a página inicial.
 
-### Os instaladores e o limite do GitHub
+### Os downloads
 
-O `GTI Printer Proxy 3 Pardini.exe` tem ~130 MB, acima do limite de 100 MB por
-arquivo do GitHub: ele não entra no repositório. Por isso os `.exe` ficam fora
-do Git (`.gitignore`).
+| Botao | De onde vem |
+|---|---|
+| **Download DPPrinter** | nao baixa nada: abre o aviso "Proxy disponivel em breve" |
+| **Browser Print** | link externo, servido pelo proprio Hermes Pardini |
+| **GTI Printer Proxy** | arquivo local em `downloads/` |
 
-Para os três botões de download funcionarem, publique **pela CLI**, direto da
-pasta local — assim os instaladores sobem como arquivos estáticos sem passar
-pelo GitHub:
+O Browser Print aponta para:
+
+```
+https://www.hermespardini.com.br/repositorio/zebra/zebra-browser-print.exe
+```
+
+Como esse arquivo passou a vir de fora, so o `GTI Printer Proxy 3 Pardini.exe`
+precisa continuar na pasta `downloads/`.
+
+E ele tem ~130 MB, acima do limite de 100 MB por arquivo do GitHub: nao entra
+no repositorio de jeito nenhum. Por isso os `.exe` ficam fora do Git
+(`.gitignore`). Para esse download funcionar no site publicado, publique
+**pela CLI**, direto da pasta local:
 
 ```bash
 vercel deploy --prod
 ```
 
-É para isso que existe o `.vercelignore`: sem ele a Vercel usaria o
-`.gitignore` e deixaria os `.exe` de fora.
+E para isso que existe o `.vercelignore`: sem ele a Vercel usaria o
+`.gitignore` e deixaria o instalador de fora.
 
-Se você publicar pelo deploy automático ligado ao GitHub, o site sobe normal,
-mas os botões de download vão dar 404 — os arquivos não estarão lá.
+Publicando pelo deploy automatico ligado ao GitHub, o site sobe normal e o
+Browser Print funciona (o link e externo), mas o GTI da 404.
 
 ### Cache
 
